@@ -4,9 +4,8 @@ import signal_tl as stl
 
 p = stl.Predicate("p") > 10
 q = stl.Predicate('q') < 5
-r = stl.Predicate('r') > 1
 
-phi1 = stl.Or([p, q, r])
+phi1 = p | q
 # phi2 = stl.And([stl.Not(p), q])
 # phi = stl.Always(phi)
 # phi = stl.Eventually(p)
