@@ -8,80 +8,55 @@ class ActorCritic():
     def __init__(self, **kwargs):
         super().__init__()
 
-        self.env_safety_properties = {
-            'G(p -> (Xp | Xq))': False,
-            'G(q -> (Xq | Xp | Xr))': False,
-            'G(r -> (Xr | Xq))': False,
-        }
-        self.env_liveness_properties = {
+        self.env_properties = [
+            {
+                'category': 'safety',
+                'property': '(G(p -> (Xp | Xq)) & G(q -> (Xq | Xp | Xr)) & G(r -> (Xr | Xq)))',
+                'quantitative': False
+            },
+            {
+                'category': 'liveness',
+                'property': '',
+                'quantitative': False
+            },
+        ]
 
-        }
+        self.env_specification = ''
+        results = list(filter(lambda item: len(item['property']) > 0, self.env_properties))
+        if len(results) > 0:
+            self.env_specification += '('
+            for x in results:
+                self.env_specification += x['property'] + ' & '
+            self.env_specification = self.env_specification[:-3]
+            self.env_specification += ')'
 
-        self.env_safety_spec = ''
-        if len(self.env_safety_properties.keys()) > 0:
-            self.env_safety_spec += '('
-            for key in self.env_safety_properties.keys():
-                self.env_safety_spec += key + ' & '
-            self.env_safety_spec = self.env_safety_spec[:-3]
-            self.env_safety_spec += ')'
+        self.sys_properties = [
+            {
+                'category': 'safety',
+                'property': '(G(Xr -> Xu))',
+                'quantitative': False
+            },
+            {
+                'category': 'liveness',
+                'property': '(GF(p -> t) & GF(q -> u))',
+                'quantitative': False
+            },
+        ]
 
-        self.env_liveness_spec = ''
-        if len(self.env_liveness_properties.keys()) > 0:
-            self.env_liveness_spec += '('
-            for key in self.env_liveness_properties.keys():
-                self.env_liveness_spec += key + ' & '
-            self.env_liveness_spec = self.env_liveness_spec[:-3]
-            self.env_liveness_spec += ')'
+        self.sys_specification = ''
+        results = list(filter(lambda item: len(item['property']) > 0, self.sys_properties))
+        if len(results) > 0:
+            self.sys_specification += '('
+            for x in results:
+                self.sys_specification += x['property'] + ' & '
+            self.sys_specification = self.sys_specification[:-3]
+            self.sys_specification += ')'
 
-        self.env_spec = ''
-        if len(self.env_safety_properties.keys()) > 0 and len(self.env_liveness_properties.keys()) > 0:
-            self.env_spec += '(' + self.env_safety_spec + ' & ' + self.env_liveness_spec + ')'
-        elif len(self.env_safety_properties.keys()) > 0:
-            self.env_spec += '(' + self.env_safety_spec + ')'
-        elif len(self.env_liveness_properties.keys()) > 0:
-            self.env_spec += '(' + self.env_liveness_spec + ')'
-
-        self.sys_safety_properties = {
-            # 'G(Xp -> Xt)': False,
-            # 'G(Xq -> Xu)': False,
-            'G(Xr -> Xv)': False,
-        }
-        self.sys_liveness_properties = {
-            # 'G(p -> (F[0, 2] t))': False,
-            # 'G(q -> (F[0, 2] u))': False,
-            'GF(p -> t)': False,
-            'GF(q -> u)': False,
-        }
-
-        self.sys_safety_spec = ''
-        if len(self.sys_safety_properties.keys()) > 0:
-            self.sys_safety_spec += '('
-            for key in self.sys_safety_properties.keys():
-                self.sys_safety_spec += key + ' & '
-            self.sys_safety_spec = self.sys_safety_spec[:-3]
-            self.sys_safety_spec += ')'
-
-        self.sys_liveness_spec = ''
-        if len(self.sys_liveness_properties.keys()) > 0:
-            self.sys_liveness_spec += '('
-            for key in self.sys_liveness_properties.keys():
-                self.sys_liveness_spec += key + ' & '
-            self.sys_liveness_spec = self.sys_liveness_spec[:-3]
-            self.sys_liveness_spec += ')'
-
-        self.sys_spec = ''
-        if len(self.sys_safety_properties.keys()) > 0 and len(self.sys_liveness_properties.keys()) > 0:
-            self.sys_spec += '(' + self.sys_safety_spec + ' & ' + self.sys_liveness_spec + ')'
-        elif len(self.sys_safety_properties.keys()) > 0:
-            self.sys_spec += '(' + self.sys_safety_spec + ')'
-        elif len(self.sys_liveness_properties.keys()) > 0:
-            self.sys_spec += '(' + self.sys_liveness_spec + ')'
-
-        self.spec = '(' + self.env_spec + ' -> ' + self.sys_spec + ')'
+        self.specification = '(' + self.env_specification + ' -> ' + self.sys_specification + ')'
 
         self.width = kwargs.get('width', 3)
         self.max_x = self.width - 1
-        self.action_space = Discrete(3)
+        self.action_space = Discrete(2)
         self.observation_space = Discrete(self.width)
         self.x = 0
         self.start = kwargs.get('start', self.x)
@@ -105,13 +80,13 @@ class ActorCritic():
                     self.traces['q'].append((len(self.traces['q']), False))
                     self.traces['r'].append((len(self.traces['r']), True))
                 safety_eval = True
-                if len(self.env_safety_properties.keys()) > 0:
-                    phi = mtl.parse(self.env_safety_spec)
-                    safety_eval = phi(self.traces, quantitative=False)
+                if len(self.env_properties[0]['property']) > 0:
+                    phi = mtl.parse(self.env_properties[0]['property'])
+                    safety_eval = phi(self.traces, quantitative=self.env_properties[0]['quantitative'])
                 liveness_eval = True
-                if len(self.env_liveness_properties.keys()) > 0:
-                    phi = mtl.parse(self.env_liveness_spec)
-                    liveness_eval = phi(self.traces, quantitative=False)
+                if len(self.env_properties[1]['property']) > 0:
+                    phi = mtl.parse(self.env_properties[1]['property'])
+                    liveness_eval = phi(self.traces, quantitative=self.env_properties[1]['quantitative'])
                 if safety_eval and liveness_eval:
                     possible_inputs.append(v)
                 self.traces['p'].pop(len(self.traces['p']) - 1)
@@ -140,15 +115,9 @@ class ActorCritic():
         if self.action == 0:
             self.traces['t'].append((len(self.traces['t']), True))
             self.traces['u'].append((len(self.traces['u']), False))
-            self.traces['v'].append((len(self.traces['v']), False))
         elif self.action == 1:
             self.traces['t'].append((len(self.traces['t']), False))
             self.traces['u'].append((len(self.traces['u']), True))
-            self.traces['v'].append((len(self.traces['v']), False))
-        elif self.action == 2:
-            self.traces['t'].append((len(self.traces['t']), False))
-            self.traces['u'].append((len(self.traces['u']), False))
-            self.traces['v'].append((len(self.traces['v']), True))
         obs = np.array(self.x)
 
         info = {
@@ -157,15 +126,15 @@ class ActorCritic():
         reward = 0
         done = False
         safety_eval = True
-        if len(self.sys_safety_properties.keys()) > 0:
-            phi = mtl.parse(self.sys_safety_spec)
-            safety_eval = phi(self.traces, quantitative=False)
+        if len(self.sys_properties[0]['property']) > 0:
+            phi = mtl.parse(self.sys_properties[0]['property'])
+            safety_eval = phi(self.traces, quantitative=self.sys_properties[0]['quantitative'])
         liveness_eval = True
-        if len(self.sys_liveness_properties.keys()) > 0:
-            phi = mtl.parse(self.sys_liveness_spec)
-            liveness_eval = phi(self.traces, quantitative=False)
+        if len(self.sys_properties[1]['property']) > 0:
+            phi = mtl.parse(self.sys_properties[1]['property'])
+            liveness_eval = phi(self.traces, quantitative=self.sys_properties[1]['quantitative'])
         if safety_eval and liveness_eval:
-            reward += 500
+            reward += 100
             done = True
             info['satisfiable'] = True
         elif safety_eval and not liveness_eval:
@@ -177,7 +146,7 @@ class ActorCritic():
         #     done = False
         #     info['satisfiable'] = False
         else:
-            reward += -5000
+            reward += -100
             done = True
             info['satisfiable'] = False
         return obs, reward, done, info
@@ -194,8 +163,6 @@ class ActorCritic():
             't': [(0, True)],
             # deceleration
             'u': [(0, False)],
-            # stop
-            'v': [(0, False)]
         }
         self.take_env()
         return np.array(self.x)
