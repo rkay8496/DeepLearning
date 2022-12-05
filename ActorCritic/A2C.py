@@ -4,7 +4,7 @@ import gym
 import tensorflow_probability as tfp
 import keras.losses as kls
 import matplotlib.pyplot as plt
-from ActorCritic.A2CSafetyTrainEnv import ActorCritic
+from ActorCritic.A2CArbiterEnv import ActorCritic
 
 env = ActorCritic()
 state_size = env.observation_space.n
@@ -29,7 +29,7 @@ class actor(tf.keras.Model):
         super().__init__()
         self.d1 = tf.keras.layers.Dense(128, input_shape=(1,), activation='relu')
         # self.d2 = tf.keras.layers.Dense(32,activation='relu')
-        self.a = tf.keras.layers.Dense(2, activation='softmax')
+        self.a = tf.keras.layers.Dense(state_size, activation='softmax')
         self.model = tf.keras.models.Sequential([
             self.d1,
             self.a
