@@ -169,7 +169,7 @@ class ActorCritic():
             done = True
             info['satisfiable'] = True
         elif safety_eval and not liveness_eval:
-            reward += -5
+            reward += 50
             done = False
             info['satisfiable'] = False
         # elif not safety_eval and liveness_eval:

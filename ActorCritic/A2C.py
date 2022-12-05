@@ -4,7 +4,7 @@ import gym
 import tensorflow_probability as tfp
 import keras.losses as kls
 import matplotlib.pyplot as plt
-from ActorCritic.A2CSafetyTrainEnv import ActorCritic
+from ActorCritic.A2CArbiterEnv import ActorCritic
 
 env = ActorCritic()
 state_size = env.observation_space.n
@@ -14,12 +14,12 @@ class critic(tf.keras.Model):
     def __init__(self):
         super().__init__()
         self.d1 = tf.keras.layers.Dense(128, activation='relu')
-        # self.d2 = tf.keras.layers.Dense(32,activation='relu')
+        self.d2 = tf.keras.layers.Dense(32, activation='relu')
         self.v = tf.keras.layers.Dense(1, activation=None)
 
     def call(self, input_data):
         x = self.d1(input_data)
-        # x = self.d2(x)
+        x = self.d2(x)
         v = self.v(x)
         return v
 
@@ -28,16 +28,17 @@ class actor(tf.keras.Model):
     def __init__(self):
         super().__init__()
         self.d1 = tf.keras.layers.Dense(state_size, input_shape=(1,), activation='relu')
-        # self.d2 = tf.keras.layers.Dense(32,activation='relu')
+        self.d2 = tf.keras.layers.Dense(32, activation='relu')
         self.a = tf.keras.layers.Dense(action_size, activation='softmax')
         self.model = tf.keras.models.Sequential([
             self.d1,
+            self.d2,
             self.a
         ])
 
     def call(self, input_data):
         x = self.d1(input_data)
-        # x = self.d2(x)
+        x = self.d2(x)
         a = self.a(x)
         return a
 

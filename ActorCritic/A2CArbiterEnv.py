@@ -11,6 +11,8 @@ class ActorCritic():
         self.env_safety_properties = {
             'G((p & ~r) -> Xp)': False,
             'G((q & ~s) -> Xq)': False,
+            'G((p & r & X~r) -> X~p)': False,
+            'G((q & s & X~s) -> X~q)': False,
         }
         self.env_liveness_properties = {
 
@@ -163,7 +165,7 @@ class ActorCritic():
             done = True
             info['satisfiable'] = True
         elif safety_eval and not liveness_eval:
-            reward += -5
+            reward += 50
             done = False
             info['satisfiable'] = False
         # elif not safety_eval and liveness_eval:
