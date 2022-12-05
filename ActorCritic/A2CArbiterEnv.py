@@ -9,9 +9,8 @@ class ActorCritic():
         super().__init__()
 
         self.env_safety_properties = {
-            'G(p -> (Xp | Xq))': False,
-            'G(q -> (Xq | Xp | Xr))': False,
-            'G(r -> (Xr | Xq))': False,
+            'G((p & ~r) -> Xp)': False,
+            'G((q & ~s) -> Xq)': False,
         }
         self.env_liveness_properties = {
 
@@ -42,13 +41,11 @@ class ActorCritic():
             self.env_spec += '(' + self.env_liveness_spec + ')'
 
         self.sys_safety_properties = {
-            'G(Xp -> Xt)': False,
-            'G(Xq -> Xu)': False,
-            'G(Xr -> Xv)': False,
+            'G(~(r & s))': False,
         }
         self.sys_liveness_properties = {
-            # 'G(Xp -> Xt)': False,
-            # 'G(Xq -> Xu)': False,
+            'GF(p -> r)': False,
+            'GF(q -> s)': False,
         }
 
         self.sys_safety_spec = ''
@@ -77,9 +74,9 @@ class ActorCritic():
 
         self.spec = '(' + self.env_spec + ' -> ' + self.sys_spec + ')'
 
-        self.width = kwargs.get('width', 3)
+        self.width = kwargs.get('width', 4)
         self.max_x = self.width - 1
-        self.action_space = Discrete(3)
+        self.action_space = Discrete(4)
         self.observation_space = Discrete(self.width)
         self.x = 0
         self.start = kwargs.get('start', self.x)
@@ -91,17 +88,17 @@ class ActorCritic():
             possible_inputs = []
             for v in range(self.width):
                 if v == 0:
-                    self.traces['p'].append((len(self.traces['p']), True))
+                    self.traces['p'].append((len(self.traces['p']), False))
                     self.traces['q'].append((len(self.traces['q']), False))
-                    self.traces['r'].append((len(self.traces['r']), False))
                 elif v == 1:
                     self.traces['p'].append((len(self.traces['p']), False))
                     self.traces['q'].append((len(self.traces['q']), True))
-                    self.traces['r'].append((len(self.traces['r']), False))
                 elif v == 2:
-                    self.traces['p'].append((len(self.traces['p']), False))
+                    self.traces['p'].append((len(self.traces['p']), True))
                     self.traces['q'].append((len(self.traces['q']), False))
-                    self.traces['r'].append((len(self.traces['r']), True))
+                elif v == 3:
+                    self.traces['p'].append((len(self.traces['p']), True))
+                    self.traces['q'].append((len(self.traces['q']), True))
                 safety_eval = True
                 if len(self.env_safety_properties.keys()) > 0:
                     phi = mtl.parse(self.env_safety_spec)
@@ -120,32 +117,32 @@ class ActorCritic():
         selected_input = np.random.choice(possible_inputs)
         self.x = selected_input
         if selected_input == 0:
-            self.traces['p'].append((len(self.traces['p']), True))
+            self.traces['p'].append((len(self.traces['p']), False))
             self.traces['q'].append((len(self.traces['q']), False))
-            self.traces['r'].append((len(self.traces['r']), False))
         elif selected_input == 1:
             self.traces['p'].append((len(self.traces['p']), False))
             self.traces['q'].append((len(self.traces['q']), True))
-            self.traces['r'].append((len(self.traces['r']), False))
         elif selected_input == 2:
-            self.traces['p'].append((len(self.traces['p']), False))
+            self.traces['p'].append((len(self.traces['p']), True))
             self.traces['q'].append((len(self.traces['q']), False))
-            self.traces['r'].append((len(self.traces['r']), True))
+        elif selected_input == 3:
+            self.traces['p'].append((len(self.traces['p']), True))
+            self.traces['q'].append((len(self.traces['q']), True))
 
     def step(self, action):
         self.action = action
         if self.action == 0:
-            self.traces['t'].append((len(self.traces['t']), True))
-            self.traces['u'].append((len(self.traces['u']), False))
-            self.traces['v'].append((len(self.traces['v']), False))
-        elif self.action == 1:
-            self.traces['t'].append((len(self.traces['t']), False))
-            self.traces['u'].append((len(self.traces['u']), True))
-            self.traces['v'].append((len(self.traces['v']), False))
-        elif self.action == 2:
-            self.traces['t'].append((len(self.traces['t']), False))
-            self.traces['u'].append((len(self.traces['u']), False))
-            self.traces['v'].append((len(self.traces['v']), True))
+            self.traces['r'].append((len(self.traces['r']), False))
+            self.traces['s'].append((len(self.traces['s']), False))
+        if self.action == 1:
+            self.traces['r'].append((len(self.traces['r']), False))
+            self.traces['s'].append((len(self.traces['s']), True))
+        if self.action == 2:
+            self.traces['r'].append((len(self.traces['r']), True))
+            self.traces['s'].append((len(self.traces['s']), False))
+        if self.action == 3:
+            self.traces['r'].append((len(self.traces['r']), True))
+            self.traces['s'].append((len(self.traces['s']), True))
         obs = np.array(self.x)
 
         info = {
@@ -181,18 +178,10 @@ class ActorCritic():
 
     def reset(self):
         self.traces = {
-            # safety distance
-            'p': [(0, True)],
-            # warning distance
+            'p': [(0, False)],
             'q': [(0, False)],
-            # danger distance
             'r': [(0, False)],
-            # acceleration
-            't': [(0, False)],
-            # deceleration
-            'u': [(0, False)],
-            # stop
-            'v': [(0, False)]
+            's': [(0, False)],
         }
         self.take_env()
         return np.array(self.x)

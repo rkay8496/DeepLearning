@@ -43,8 +43,8 @@ class actor(tf.keras.Model):
 class agent():
     def __init__(self, gamma=0.99):
         self.gamma = gamma
-        self.a_opt = tf.keras.optimizers.Adam(learning_rate=0.00000001)
-        self.c_opt = tf.keras.optimizers.Adam(learning_rate=0.00000001)
+        self.a_opt = tf.keras.optimizers.Adam(learning_rate=0.000000005)
+        self.c_opt = tf.keras.optimizers.Adam(learning_rate=0.000000005)
         self.actor = actor()
         self.critic = critic()
         self.log_prob = None
@@ -131,3 +131,7 @@ for e in range(n_episodes):
         state = next_state
 
 agentoo7.actor.model.save('NaiveActorCritic.h5')
+
+model = tf.keras.models.load_model('./NaiveActorCritic.h5')
+model.load_weights('./NaiveActorCritic.h5')
+print(model.predict([0, 1, 2]))

@@ -42,13 +42,15 @@ class ActorCritic():
             self.env_spec += '(' + self.env_liveness_spec + ')'
 
         self.sys_safety_properties = {
-            'G(Xp -> Xt)': False,
-            'G(Xq -> Xu)': False,
+            # 'G(Xp -> Xt)': False,
+            # 'G(Xq -> Xu)': False,
             'G(Xr -> Xv)': False,
         }
         self.sys_liveness_properties = {
-            # 'G(Xp -> Xt)': False,
-            # 'G(Xq -> Xu)': False,
+            # 'G(p -> (F[0, 2] t))': False,
+            # 'G(q -> (F[0, 2] u))': False,
+            'GF(p -> t)': False,
+            'GF(q -> u)': False,
         }
 
         self.sys_safety_spec = ''
@@ -114,6 +116,7 @@ class ActorCritic():
                     possible_inputs.append(v)
                 self.traces['p'].pop(len(self.traces['p']) - 1)
                 self.traces['q'].pop(len(self.traces['q']) - 1)
+                self.traces['r'].pop(len(self.traces['r']) - 1)
             return possible_inputs
 
         possible_inputs = compute_inputs()
@@ -188,7 +191,7 @@ class ActorCritic():
             # danger distance
             'r': [(0, False)],
             # acceleration
-            't': [(0, False)],
+            't': [(0, True)],
             # deceleration
             'u': [(0, False)],
             # stop

@@ -33,7 +33,7 @@ class DQNAgent:
         # The last layer has the size of actions space
         self.model = Sequential([
             Dense(units=state_size, input_dim=1, activation='relu', name='inputs'),
-            Dense(units=12, activation='relu'),
+            Dense(units=1024, activation='relu'),
             Dense(units=action_size, activation='linear', name='outputs')
         ])
         self.model.compile(loss="mse",
@@ -102,7 +102,7 @@ action_size = env.action_space.n
 # Number of episodes to run
 n_episodes = 100
 # Max iterations per epiode
-max_iteration_ep = 10
+max_iteration_ep = 20
 # We define our agent
 agent = DQNAgent(state_size, action_size)
 total_steps = 0
@@ -144,6 +144,9 @@ for e in range(n_episodes):
 
 agent.model.save('SafetyTrainModel_v1.h5')
 
+model = tf.keras.models.load_model('./SafetyTrainModel_v1.h5')
+print(model.predict([0, 1, 2]))
+
 # fig, ax = plt.subplots()
 # ax.plot(ep_list, rw_list)
 # ax.set_title('Rewards of Episode over Time Passed')
@@ -156,33 +159,33 @@ agent.model.save('SafetyTrainModel_v1.h5')
 # ax.set_xlabel('Episode')
 # _ = ax.set_ylabel('Solved')
 
-def test():
-    env = SafetyTrainEnv()
-    solve = 0
-    total_steps = 0
-    max_episode = 100
-    max_iteration_ep = 10
-    for i in range(max_episode):
-        rewards = 0
-        steps = 0
-        done = False
-        state = env.reset()
-        for j in range(1, max_iteration_ep):
-            state = np.array([state])
-            action = agent.compute_action(state)
-            state, reward, done, info = env.step(action)
-            steps += 1
-            rewards += reward
-            env.render(e=steps, rewards=rewards)
-            if steps < max_iteration_ep - 1:
-                if not done and not info['satisfiable']:
-                    env.take_env()
-                elif done and not info['satisfiable']:
-                    break
-                else:
-                    solve += 1
-                    break
-            else:
-                break
-    print("(solve: %d, total: %d, accuracy: %f)" % (solve, max_episode, solve / max_episode))
-test()
+# def test():
+#     env = SafetyTrainEnv()
+#     solve = 0
+#     total_steps = 0
+#     max_episode = 100
+#     max_iteration_ep = 10
+#     for i in range(max_episode):
+#         rewards = 0
+#         steps = 0
+#         done = False
+#         state = env.reset()
+#         for j in range(1, max_iteration_ep):
+#             state = np.array([state])
+#             action = agent.compute_action(state)
+#             state, reward, done, info = env.step(action)
+#             steps += 1
+#             rewards += reward
+#             env.render(e=steps, rewards=rewards)
+#             if steps < max_iteration_ep - 1:
+#                 if not done and not info['satisfiable']:
+#                     env.take_env()
+#                 elif done and not info['satisfiable']:
+#                     break
+#                 else:
+#                     solve += 1
+#                     break
+#             else:
+#                 break
+#     print("(solve: %d, total: %d, accuracy: %f)" % (solve, max_episode, solve / max_episode))
+# test()

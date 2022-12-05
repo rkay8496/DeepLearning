@@ -46,11 +46,11 @@ class SafetyTrainEnv():
             self.env_spec += '(' + self.env_liveness_spec + ')'
 
         self.sys_safety_properties = {
-            'G(Xr -> Xu)': False
+            'G(Xr -> Xu)': False,
         }
         self.sys_liveness_properties = {
-            'G(p -> (F[0, 1] t))': False,
-            'G(q -> (F[0, 1] u))': False,
+            'G(Xp -> Xt)': False,
+            'G(Xq -> Xu)': False,
         }
 
         self.sys_safety_spec = ''
@@ -166,10 +166,10 @@ class SafetyTrainEnv():
             reward += -500
             done = False
             info['satisfiable'] = False
-        elif not safety_eval and liveness_eval:
-            reward += -500
-            done = False
-            info['satisfiable'] = False
+        # elif not safety_eval and liveness_eval:
+        #     reward += -500
+        #     done = False
+        #     info['satisfiable'] = False
         else:
             reward += -5000
             done = True
