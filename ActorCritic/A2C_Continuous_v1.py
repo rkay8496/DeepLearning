@@ -6,7 +6,7 @@ import keras.losses as kls
 import matplotlib.pyplot as plt
 from ActorCritic.A2CSafetyTrainEnv_Continuous_v1 import ActorCritic
 
-env = ActorCritic()
+env = ActorCritic(render_mode='human')
 # state_size = env.observation_space.n
 # action_size = env.action_space.n
 

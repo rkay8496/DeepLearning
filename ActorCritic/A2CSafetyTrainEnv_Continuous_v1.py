@@ -1,12 +1,17 @@
 import numpy as np
 from gym.spaces import Discrete, Box
+import gym
+import pygame
 import stl
 
-class ActorCritic():
-    metadata = {'render_modes': ['human']}
+class ActorCritic(gym.Env):
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, **kwargs):
+    def __init__(self, render_mode=None, size=5):
         super().__init__()
+
+        self.size = size  # The size of the square grid
+        self.window_size = 512 # The size of the PyGame window
 
         self.env_properties = [
             {
@@ -61,9 +66,13 @@ class ActorCritic():
         self.action_space = Box(low=-1, high=150, shape=(1,), dtype=np.int32)
 
         self.x = 0
-        self.start = kwargs.get('start', self.x)
-        self.initial_pos = kwargs.get('initial_pos', self.start)
-        self.x = self.initial_pos
+
+        assert render_mode is None or render_mode in self.metadata["render_modes"]
+        self.render_mode = render_mode
+
+        self.action = None
+        self.window = None
+        self.clock = None
 
     def take_env(self):
         def compute_inputs():
@@ -133,6 +142,7 @@ class ActorCritic():
             reward += -100
             done = True
             info['satisfiable'] = False
+        self.render()
         return obs, reward, done, info
 
     def reset(self):
@@ -142,11 +152,94 @@ class ActorCritic():
             # velocity
             'v': [(0, 130)],
         }
+
         self.take_env()
+
+        if self.render_mode == "human":
+            self._render_frame()
+
         return np.array(self.x)
 
-    def render(self, mode='human', e=0, rewards=0):
-        if mode == 'human':
-            print("(input: %d , output: %d , epi_num: %d , rewards: %d )" % (self.x, self.action, e, rewards))
-        else:
-            super().render(mode=mode)  # just raise an exception
+    def render(self):
+        if self.render_mode == "human":
+            return self._render_frame()
+
+    def _render_frame(self):
+        if self.window is None and self.render_mode == "human":
+            pygame.init()
+            pygame.display.init()
+            self.window = pygame.display.set_mode((self.window_size, self.window_size / self.size))
+        if self.clock is None and self.render_mode == "human":
+            self.clock = pygame.time.Clock()
+
+        canvas = pygame.Surface((self.window_size, self.window_size))
+        canvas.fill((0, 0, 0))
+        pix_square_size = (
+            self.window_size / self.size
+        )  # The size of a single grid square in pixels
+
+        # First we draw the target
+        pygame.draw.rect(
+            canvas,
+            (255, 0, 0),
+            pygame.Rect(
+                pix_square_size * np.array([4, 0]),
+                (pix_square_size, pix_square_size),
+            ),
+        )
+
+        if self.x == 0:
+            train = np.array([2, 0])
+        elif self.x == 1:
+            train = np.array([1, 0])
+        elif self.x == 2:
+            train = np.array([0, 0])
+
+        color = 764 if self.action == None else self.action * 3
+        color = divmod(color, 255)
+        if color[0] == 0:
+            color = (color[1], 0, 0)
+        elif color[0] == 1:
+            color = (0, color[1], 0)
+        elif color[0] == 2:
+            color = (0, 0, color[1])
+
+        # Now we draw the agent
+        pygame.draw.circle(
+            canvas,
+            # (0, 0, 255),
+            color,
+            (train + 0.5) * pix_square_size,
+            pix_square_size / 3,
+        )
+
+        # Finally, add some gridlines
+        for x in range(self.size + 1):
+            pygame.draw.line(
+                canvas,
+                (255, 255, 255),
+                (0, pix_square_size * x),
+                (self.window_size, pix_square_size * x),
+                width=3,
+            )
+            pygame.draw.line(
+                canvas,
+                (255, 255, 255),
+                (pix_square_size * x, 0),
+                (pix_square_size * x, self.window_size),
+                width=3,
+            )
+
+        if self.render_mode == "human":
+            # The following line copies our drawings from `canvas` to the visible window
+            self.window.blit(canvas, canvas.get_rect())
+            pygame.event.pump()
+            pygame.display.update()
+
+            # We need to ensure that human-rendering occurs at the predefined framerate.
+            # The following line will automatically add a delay to keep the framerate stable.
+            self.clock.tick(self.metadata["render_fps"])
+        else:  # rgb_array
+            return np.transpose(
+                np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
+            )
