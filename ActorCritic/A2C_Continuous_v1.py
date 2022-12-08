@@ -129,7 +129,7 @@ def preprocess1(states, actions, rewards, gamma):
 
 tf.random.set_seed(336699)
 agentoo7 = agent()
-episodes = 250
+episodes = 100
 iterations = 20
 ep_reward = []
 total_avgr = []

@@ -87,11 +87,11 @@ class ActorCritic(gym.Env):
                 safety_eval = True
                 if len(self.env_properties[0]['property']) > 0:
                     phi = stl.parse(self.env_properties[0]['property'])
-                    safety_eval = phi(self.traces) > 0 if True else False
+                    safety_eval = True if phi(self.traces) > 0 else False
                 liveness_eval = True
                 if len(self.env_properties[1]['property']) > 0:
                     phi = stl.parse(self.env_properties[1]['property'])
-                    liveness_eval = phi(self.traces) > 0 if True else False
+                    liveness_eval = True if phi(self.traces) > 0 else False
                 if safety_eval and liveness_eval:
                     possible_inputs.append(v)
                 self.traces['d'].pop(len(self.traces['d']) - 1)
@@ -121,11 +121,11 @@ class ActorCritic(gym.Env):
         safety_eval = True
         if len(self.sys_properties[0]['property']) > 0:
             phi = stl.parse(self.sys_properties[0]['property'])
-            safety_eval = phi(self.traces) > 0 if True else False
+            safety_eval = True if phi(self.traces) > 0 else False
         liveness_eval = True
         if len(self.sys_properties[1]['property']) > 0:
             phi = stl.parse(self.sys_properties[1]['property'])
-            liveness_eval = phi(self.traces) > 0 if True else False
+            liveness_eval = True if phi(self.traces) > 0 else False
         if safety_eval and liveness_eval:
             reward += 100
             done = True
@@ -195,14 +195,8 @@ class ActorCritic(gym.Env):
         elif self.x == 2:
             train = np.array([0, 0])
 
-        color = 764 if self.action == None else self.action * 3
-        color = divmod(color, 255)
-        if color[0] == 0:
-            color = (color[1], 0, 0)
-        elif color[0] == 1:
-            color = (0, color[1], 0)
-        elif color[0] == 2:
-            color = (0, 0, color[1])
+        diff = 0 if self.action == None else self.action
+        color = (0 + (diff * 1.7), 0, 255 - (diff * 1.7))
 
         # Now we draw the agent
         pygame.draw.circle(
