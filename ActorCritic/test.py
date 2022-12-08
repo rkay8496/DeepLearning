@@ -9,11 +9,9 @@ episodes = 250
 iterations = 20
 for epi in range(episodes):
     state = np.random.choice([0, 1, 2])
-    print(state)
     state = np.array([state])
     for step in range(1, iterations):
         prob = model.predict(state)
         dist = tfp.distributions.Categorical(probs=prob, dtype=tf.float32)
-        print(prob)
         action = dist.sample()
-        # print(int(action.numpy()[0]))
+        print(int(action.numpy()[0]))
