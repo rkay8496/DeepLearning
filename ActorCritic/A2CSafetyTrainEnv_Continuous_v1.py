@@ -16,9 +16,9 @@ class ActorCritic(gym.Env):
         self.env_properties = [
             {
                 'category': 'safety',
-                'property': '(G(({d > -1} & {d < 1}) -> (F[1, 1]({d > -1} & {d < 1}) | F[1, 1]({d > 0} & {d < 2}))) & '
-                            'G(({d > 0} & {d < 2}) -> (F[1, 1]({d > 0} & {d < 2}) | F[1, 1]({d > -1} & {d < 1}) | F[1, 1]({d > 1} & {d < 3}))) & '
-                            'G(({d > 1} & {d < 3}) -> (F[1, 1]({d > 1} & {d < 3}) | F[1, 1]({d > 0} & {d < 2}))))',
+                'property': '(G(({d > -1} & {d < 1}) -> (F[1, 2]({d > -1} & {d < 1}) | F[1, 2]({d > 0} & {d < 2}))) & '
+                            'G(({d > 0} & {d < 2}) -> (F[1, 2]({d > 0} & {d < 2}) | F[1, 2]({d > -1} & {d < 1}) | F[1, 2]({d > 1} & {d < 3}))) & '
+                            'G(({d > 1} & {d < 3}) -> (F[1, 2]({d > 1} & {d < 3}) | F[1, 2]({d > 0} & {d < 2}))))',
                 'quantitative': True
             },
             {
@@ -45,7 +45,7 @@ class ActorCritic(gym.Env):
             },
             {
                 'category': 'liveness',
-                'property': '(G(({d < 3} & {d > 1}) -> F[0, 2]{v > 120}) & G(({d < 2} & {d > 0}) -> F[0, 2]({v < 50} & {v > 30})))',
+                'property': '(G(({d < 3} & {d > 1}) -> F[0, 1]{v > 120}) & G(({d < 2} & {d > 0}) -> F[0, 1]({v < 50} & {v > 30})))',
                 'quantitative': True
             },
         ]
@@ -87,11 +87,13 @@ class ActorCritic(gym.Env):
                 safety_eval = True
                 if len(self.env_properties[0]['property']) > 0:
                     phi = stl.parse(self.env_properties[0]['property'])
-                    safety_eval = True if phi(self.traces) > 0 else False
+                    value = phi(self.traces)
+                    safety_eval = True if value > 0 or (value <= 0 and value > -1) else False
                 liveness_eval = True
                 if len(self.env_properties[1]['property']) > 0:
                     phi = stl.parse(self.env_properties[1]['property'])
-                    liveness_eval = True if phi(self.traces) > 0 else False
+                    value = phi(self.traces)
+                    liveness_eval = True if value > 0 or (value <= 0 and value > -1) else False
                 if safety_eval and liveness_eval:
                     possible_inputs.append(v)
                 self.traces['d'].pop(len(self.traces['d']) - 1)
@@ -121,28 +123,29 @@ class ActorCritic(gym.Env):
         safety_eval = True
         if len(self.sys_properties[0]['property']) > 0:
             phi = stl.parse(self.sys_properties[0]['property'])
-            safety_eval = True if phi(self.traces) > 0 else False
+            value = phi(self.traces)
+            safety_eval = True if value > 0 or (value <= 0 and value > -1) else False
         liveness_eval = True
         if len(self.sys_properties[1]['property']) > 0:
             phi = stl.parse(self.sys_properties[1]['property'])
-            liveness_eval = True if phi(self.traces) > 0 else False
+            value = phi(self.traces)
+            liveness_eval = True if value > 0 or (value <= 0 and value > -1) else False
         if safety_eval and liveness_eval:
             reward += 100
             done = True
             info['satisfiable'] = True
-        elif safety_eval and not liveness_eval:
-            reward += 50
-            done = False
-            info['satisfiable'] = False
+        # elif safety_eval and not liveness_eval:
+        #     reward += 0
+        #     done = True
+        #     info['satisfiable'] = False
         # elif not safety_eval and liveness_eval:
         #     reward += -500
         #     done = False
         #     info['satisfiable'] = False
         else:
-            reward += -100
+            reward += -1
             done = True
             info['satisfiable'] = False
-        self.render()
         return obs, reward, done, info
 
     def reset(self):
@@ -154,9 +157,6 @@ class ActorCritic(gym.Env):
         }
 
         self.take_env()
-
-        if self.render_mode == "human":
-            self._render_frame()
 
         return np.array(self.x)
 
@@ -173,7 +173,7 @@ class ActorCritic(gym.Env):
             self.clock = pygame.time.Clock()
 
         canvas = pygame.Surface((self.window_size, self.window_size))
-        canvas.fill((0, 0, 0))
+        canvas.fill((255, 255, 255))
         pix_square_size = (
             self.window_size / self.size
         )  # The size of a single grid square in pixels
@@ -188,15 +188,17 @@ class ActorCritic(gym.Env):
             ),
         )
 
+        diff = 0 if self.action == None else self.action
+
         if self.x == 0:
             train = np.array([2, 0])
+            color = (255 - (diff * 1.3), 255 - (diff * 1.3), 255 - (diff * 1.3))
         elif self.x == 1:
             train = np.array([1, 0])
+            color = (255 - (diff * 1.3), 255 - (diff * 1.3), 255 - (diff * 1.3))
         elif self.x == 2:
             train = np.array([0, 0])
-
-        diff = 0 if self.action == None else self.action
-        color = (0 + (diff * 1.7), 0, 255 - (diff * 1.7))
+            color = (255 - (diff * 1.3), 255 - (diff * 1.3), 255 - (diff * 1.3))
 
         # Now we draw the agent
         pygame.draw.circle(
@@ -237,3 +239,8 @@ class ActorCritic(gym.Env):
             return np.transpose(
                 np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
             )
+
+    def close(self):
+        if self.window is not None:
+            pygame.display.quit()
+            pygame.quit()

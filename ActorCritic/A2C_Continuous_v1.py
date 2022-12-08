@@ -46,8 +46,8 @@ class actor(tf.keras.Model):
 class agent():
     def __init__(self, gamma=0.99):
         self.gamma = gamma
-        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=7e-3)
-        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=7e-3)
+        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=7e-5)
+        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=7e-5)
         self.actor = actor()
         self.critic = critic()
 
@@ -129,8 +129,8 @@ def preprocess1(states, actions, rewards, gamma):
 
 tf.random.set_seed(336699)
 agentoo7 = agent()
-episodes = 100
-iterations = 20
+episodes = 1000
+iterations = 10
 ep_reward = []
 total_avgr = []
 for epi in range(episodes):
@@ -154,22 +154,9 @@ for epi in range(episodes):
         next_state = np.array([next_state])
         state = next_state
         total_reward += reward
+        env.take_env()
 
-        if step < iterations - 1:
-            if not done and not info['satisfiable']:
-                env.take_env()
-            else:
-                ep_reward.append(total_reward)
-                avg_reward = np.mean(ep_reward[-100:])
-                total_avgr.append(avg_reward)
-                print("total reward after {} episodes is {} and avg reward is {}".format(epi, total_reward, avg_reward))
-                states, actions, discnt_rewards = preprocess1(states, actions, rewards, 1)
-
-                al, cl = agentoo7.learn(states, actions, discnt_rewards)
-                print(f"al{al}")
-                print(f"cl{cl}")
-                break
-        else:
+        if step == iterations - 1:
             ep_reward.append(total_reward)
             avg_reward = np.mean(ep_reward[-100:])
             total_avgr.append(avg_reward)
@@ -179,7 +166,32 @@ for epi in range(episodes):
             al, cl = agentoo7.learn(states, actions, discnt_rewards)
             print(f"al{al}")
             print(f"cl{cl}")
-            break
+
+        # if step < iterations - 1:
+        #     if not done and not info['satisfiable']:
+        #         env.take_env()
+        #     else:
+        #         ep_reward.append(total_reward)
+        #         avg_reward = np.mean(ep_reward[-100:])
+        #         total_avgr.append(avg_reward)
+        #         print("total reward after {} episodes is {} and avg reward is {}".format(epi, total_reward, avg_reward))
+        #         states, actions, discnt_rewards = preprocess1(states, actions, rewards, 1)
+        #
+        #         al, cl = agentoo7.learn(states, actions, discnt_rewards)
+        #         print(f"al{al}")
+        #         print(f"cl{cl}")
+        #         break
+        # else:
+        #     ep_reward.append(total_reward)
+        #     avg_reward = np.mean(ep_reward[-100:])
+        #     total_avgr.append(avg_reward)
+        #     print("total reward after {} episodes is {} and avg reward is {}".format(epi, total_reward, avg_reward))
+        #     states, actions, discnt_rewards = preprocess1(states, actions, rewards, 1)
+        #
+        #     al, cl = agentoo7.learn(states, actions, discnt_rewards)
+        #     print(f"al{al}")
+        #     print(f"cl{cl}")
+        #     break
 
 agentoo7.actor.model.save('./A2C.h5')
 
@@ -194,3 +206,58 @@ plt.xlabel("episodes")
 plt.ylabel("average reward per 100 episodes")
 plt.grid(True)
 plt.show()
+
+def test():
+    env = ActorCritic(render_mode='human')
+    solve = 0
+    ep_reward = []
+    total_avgr = []
+    for epi in range(episodes):
+        state = env.reset()
+        state = np.array([state])
+        total_reward = 0
+        rewards = []
+        states = []
+        actions = []
+        env.render()
+        for step in range(1, iterations):
+            state = np.array([state])
+            action = agentoo7.act(state)
+            next_state, reward, done, info = env.step(action)
+            rewards.append(reward)
+            states.append(state)
+            actions.append(action)
+            next_state = np.array([next_state])
+            state = next_state
+            total_reward += reward
+            env.render()
+            if step < iterations - 1:
+                if not done and not info['satisfiable']:
+                    env.take_env()
+                else:
+                    ep_reward.append(total_reward)
+                    avg_reward = np.mean(ep_reward[-100:])
+                    total_avgr.append(avg_reward)
+                    print("total reward after {} episodes is {} and avg reward is {}".format(epi, total_reward,
+                                                                                             avg_reward))
+                    break
+            else:
+                ep_reward.append(total_reward)
+                avg_reward = np.mean(ep_reward[-100:])
+                total_avgr.append(avg_reward)
+                print("total reward after {} episodes is {} and avg reward is {}".format(epi, total_reward, avg_reward))
+                break
+
+
+    ep = [i for i in range(episodes)]
+    plt.plot(ep, total_avgr, 'b')
+    plt.title("avg reward Vs episodes")
+    plt.xlabel("episodes")
+    plt.ylabel("average reward per 100 episodes")
+    plt.grid(True)
+    plt.show()
+
+    env.close()
+
+test()
+
