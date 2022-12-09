@@ -87,13 +87,11 @@ class ActorCritic(gym.Env):
                 safety_eval = True
                 if len(self.env_properties[0]['property']) > 0:
                     phi = stl.parse(self.env_properties[0]['property'])
-                    value = phi(self.traces)
-                    safety_eval = True if value > 0 or (value <= 0 and value > -1) else False
+                    safety_eval = True if phi(self.traces) > -1 else False
                 liveness_eval = True
                 if len(self.env_properties[1]['property']) > 0:
                     phi = stl.parse(self.env_properties[1]['property'])
-                    value = phi(self.traces)
-                    liveness_eval = True if value > 0 or (value <= 0 and value > -1) else False
+                    liveness_eval = True if phi(self.traces) > -1 else False
                 if safety_eval and liveness_eval:
                     possible_inputs.append(v)
                 self.traces['d'].pop(len(self.traces['d']) - 1)
@@ -123,21 +121,19 @@ class ActorCritic(gym.Env):
         safety_eval = True
         if len(self.sys_properties[0]['property']) > 0:
             phi = stl.parse(self.sys_properties[0]['property'])
-            value = phi(self.traces)
-            safety_eval = True if value > 0 or (value <= 0 and value > -1) else False
+            safety_eval = True if phi(self.traces) > -1 else False
         liveness_eval = True
         if len(self.sys_properties[1]['property']) > 0:
             phi = stl.parse(self.sys_properties[1]['property'])
-            value = phi(self.traces)
-            liveness_eval = True if value > 0 or (value <= 0 and value > -1) else False
+            liveness_eval = True if phi(self.traces) > -1 else False
         if safety_eval and liveness_eval:
             reward += 100
             done = True
             info['satisfiable'] = True
-        # elif safety_eval and not liveness_eval:
-        #     reward += 0
-        #     done = True
-        #     info['satisfiable'] = False
+        elif safety_eval and not liveness_eval:
+            reward += 1
+            done = False
+            info['satisfiable'] = False
         # elif not safety_eval and liveness_eval:
         #     reward += -500
         #     done = False
@@ -213,14 +209,14 @@ class ActorCritic(gym.Env):
         for x in range(self.size + 1):
             pygame.draw.line(
                 canvas,
-                (255, 255, 255),
+                (0, 0, 0),
                 (0, pix_square_size * x),
                 (self.window_size, pix_square_size * x),
                 width=3,
             )
             pygame.draw.line(
                 canvas,
-                (255, 255, 255),
+                (0, 0, 0),
                 (pix_square_size * x, 0),
                 (pix_square_size * x, self.window_size),
                 width=3,
