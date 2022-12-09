@@ -46,8 +46,8 @@ class actor(tf.keras.Model):
 class agent():
     def __init__(self, gamma=0.99):
         self.gamma = gamma
-        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.000005)
-        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.000005)
+        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.000001)
+        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.000001)
         self.actor = actor()
         self.critic = critic()
 
@@ -129,7 +129,7 @@ def preprocess1(states, actions, rewards, gamma):
 
 tf.random.set_seed(336699)
 agentoo7 = agent()
-episodes = 1000
+episodes = 10000
 ep_reward = []
 total_avgr = []
 solved = 0
