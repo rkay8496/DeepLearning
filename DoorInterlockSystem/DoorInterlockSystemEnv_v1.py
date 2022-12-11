@@ -135,25 +135,25 @@ class DoorInterlockSystemEnv():
             return possible_inputs
 
         possible_inputs = compute_inputs()
-        selected_inputs = np.random.choice(possible_inputs)
-        self.observation = self.env_bits.index(selected_inputs)
-        if selected_inputs[4] == '1':
+        selected_input = np.random.choice(possible_inputs)
+        self.observation = self.env_bits.index(selected_input)
+        if selected_input[4] == '1':
             self.traces['p0'].append((len(self.traces['p0']), True))
         else:
             self.traces['p0'].append((len(self.traces['p0']), False))
-        if selected_inputs[3] == '1':
+        if selected_input[3] == '1':
             self.traces['p1'].append((len(self.traces['p1']), True))
         else:
             self.traces['p1'].append((len(self.traces['p1']), False))
-        if selected_inputs[2] == '1':
+        if selected_input[2] == '1':
             self.traces['q0'].append((len(self.traces['q0']), True))
         else:
             self.traces['q0'].append((len(self.traces['q0']), False))
-        if selected_inputs[1] == '1':
+        if selected_input[1] == '1':
             self.traces['q1'].append((len(self.traces['q1']), True))
         else:
             self.traces['q1'].append((len(self.traces['q1']), False))
-        if selected_inputs[0] == '1':
+        if selected_input[0] == '1':
             self.traces['r0'].append((len(self.traces['r0']), True))
         else:
             self.traces['r0'].append((len(self.traces['r0']), False))
