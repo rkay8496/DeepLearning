@@ -6,7 +6,7 @@ import numpy as np
 from gym.spaces import Discrete
 import mtl
 
-class SafetyTrainEnv():
+class DoorInterlockSystemEnv():
     metadata = {'render_modes': ['human']}
 
     def __init__(self, **kwargs):
