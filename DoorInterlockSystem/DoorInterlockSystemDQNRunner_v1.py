@@ -8,7 +8,7 @@ from keras.optimizers import Adam
 from keras.metrics import mean_squared_error
 from matplotlib import pyplot as plt
 
-from DoorInterlockSystem.DoorInterlockSystemEnv_v1 import DoorInterlockSystemEnv
+from DoorInterlockSystem.DoorInterlockSystemDQNEnv_v1 import DoorInterlockSystemEnv
 
 
 class DQNAgent:
