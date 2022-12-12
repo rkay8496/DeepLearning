@@ -1,6 +1,6 @@
 import pygame
 import numpy as np
-from gym.spaces import Discrete, MultiBinary, MultiDiscrete, Dict, Text
+from gym.spaces import Discrete, MultiBinary, MultiDiscrete, Dict
 import mtl
 import gym
 
@@ -13,15 +13,31 @@ class DoorInterlockSystemEnv():
         self.size = size  # The size of the square grid
         self.window_size = 512  # The size of the PyGame window
 
-        self.env_bits = []
-        for l in ['00', '01', '10']:
-            for k in ['0', '1']:
-                for j in ['00', '01', '10']:
-                    for i in ['00', '01', '10']:
-                        self.env_bits.append(l + k + j + i)
+        self.observation_value = []
+        # p0, p1
+        # closed, partially_open, open
+        for i in ['00', '01', '10']:
+            # q0, q1
+            # nothing, close, open
+            for j in ['00', '01', '10']:
+                    # r0
+                    # off, on
+                    for k in ['0', '1']:
+                        value = []
+                        value.append(i[0])
+                        value.append(i[1])
+                        value.append(j[0])
+                        value.append(j[1])
+                        value.append(k)
+                        self.observation_value.append(value)
+
+        # s0, s1
+        # nothing, turn_off, turn_on
+        self.action_value = [[0, 0], [0, 1], [1, 0]]
 
         self.env_properties = [
             {
+
                 'category': 'safety',
                 'property': '((G((((~p0 & ~p1) & (~q0 & ~q1)) -> (X~p0 & X~p1)))) & '
                             '(G((((p0 & ~p1) & (~q0 & ~q1)) -> (Xp0 & X~p1)))) & '
@@ -58,7 +74,8 @@ class DoorInterlockSystemEnv():
             {
                 'category': 'safety',
                 'property': '((G((Xq0 & X~q1) -> (X~s0 & Xs1))) & '
-                            '(G(((X~p0 & X~p1) & (X~q0 & Xq1)) -> (Xs0 & X~s1))))',
+                            '(G(((X~p0 & X~p1) & (X~q0 & Xq1)) -> (Xs0 & X~s1))) & '
+                            '(G((X~q0 & X~q1) -> (X~s0 & X~s1))))',
                 'quantitative': False
             },
             {
@@ -94,82 +111,44 @@ class DoorInterlockSystemEnv():
         self.clock = None
 
     def take_env(self):
-        def compute_inputs():
-            possible_inputs = []
-            for bits in self.env_bits:
-                if bits[4] == '1':
-                    self.traces['p0'].append((len(self.traces['p0']), True))
-                else:
-                    self.traces['p0'].append((len(self.traces['p0']), False))
-                if bits[3] == '1':
-                    self.traces['p1'].append((len(self.traces['p1']), True))
-                else:
-                    self.traces['p1'].append((len(self.traces['p1']), False))
-                if bits[2] == '1':
-                    self.traces['q0'].append((len(self.traces['q0']), True))
-                else:
-                    self.traces['q0'].append((len(self.traces['q0']), False))
-                if bits[1] == '1':
-                    self.traces['q1'].append((len(self.traces['q1']), True))
-                else:
-                    self.traces['q1'].append((len(self.traces['q1']), False))
-                if bits[0] == '1':
-                    self.traces['r0'].append((len(self.traces['r0']), True))
-                else:
-                    self.traces['r0'].append((len(self.traces['r0']), False))
-                safety_eval = True
-                if len(self.sys_properties[0]['property']) > 0:
-                    phi = mtl.parse(self.sys_properties[0]['property'])
-                    safety_eval = phi(self.traces, quantitative=False)
-                liveness_eval = True
-                if len(self.sys_properties[1]['property']) > 0:
-                    phi = mtl.parse(self.sys_properties[1]['property'])
-                    liveness_eval = phi(self.traces, quantitative=False)
-                if safety_eval and liveness_eval:
-                    possible_inputs.append(bits)
+        def compute_observation():
+            obs = self.observation_space.sample()
+            value = self.observation_value[obs]
+            self.traces['p0'].append((len(self.traces['p0']), True if value[0] == 1 else False))
+            self.traces['p1'].append((len(self.traces['p1']), True if value[1] == 1 else False))
+            self.traces['q0'].append((len(self.traces['q0']), True if value[2] == 1 else False))
+            self.traces['q1'].append((len(self.traces['q1']), True if value[3] == 1 else False))
+            self.traces['r0'].append((len(self.traces['r0']), True if value[4] == 1 else False))
+
+            safety_eval = True
+            if len(self.sys_properties[0]['property']) > 0:
+                phi = mtl.parse(self.sys_properties[0]['property'])
+                safety_eval = phi(self.traces, quantitative=False)
+            liveness_eval = True
+            if len(self.sys_properties[1]['property']) > 0:
+                phi = mtl.parse(self.sys_properties[1]['property'])
+                liveness_eval = phi(self.traces, quantitative=False)
+            if safety_eval and liveness_eval:
+                self.observation = obs
+                return True
+            else:
                 self.traces['p0'].pop(len(self.traces['p0']) - 1)
                 self.traces['p1'].pop(len(self.traces['p1']) - 1)
                 self.traces['q0'].pop(len(self.traces['q0']) - 1)
                 self.traces['q1'].pop(len(self.traces['q1']) - 1)
                 self.traces['r0'].pop(len(self.traces['r0']) - 1)
-            return possible_inputs
+                return False
 
-        possible_inputs = compute_inputs()
-        selected_input = np.random.choice(possible_inputs)
-        self.observation = self.env_bits.index(selected_input)
-        if selected_input[4] == '1':
-            self.traces['p0'].append((len(self.traces['p0']), True))
-        else:
-            self.traces['p0'].append((len(self.traces['p0']), False))
-        if selected_input[3] == '1':
-            self.traces['p1'].append((len(self.traces['p1']), True))
-        else:
-            self.traces['p1'].append((len(self.traces['p1']), False))
-        if selected_input[2] == '1':
-            self.traces['q0'].append((len(self.traces['q0']), True))
-        else:
-            self.traces['q0'].append((len(self.traces['q0']), False))
-        if selected_input[1] == '1':
-            self.traces['q1'].append((len(self.traces['q1']), True))
-        else:
-            self.traces['q1'].append((len(self.traces['q1']), False))
-        if selected_input[0] == '1':
-            self.traces['r0'].append((len(self.traces['r0']), True))
-        else:
-            self.traces['r0'].append((len(self.traces['r0']), False))
+        computed = compute_observation()
+        while not computed:
+            computed = compute_observation()
 
     def step(self, action):
         self.action = action
+        value = self.action_value[self.action]
+        self.traces['s0'].append((len(self.traces['s0']), True if value[0] == 1 else False))
+        self.traces['s1'].append((len(self.traces['s1']), True if value[1] == 1 else False))
 
-        if action == 0:
-            self.traces['s0'].append((len(self.traces['s0']), False))
-            self.traces['s1'].append((len(self.traces['s1']), False))
-        elif action == 1:
-            self.traces['s0'].append((len(self.traces['s0']), False))
-            self.traces['s1'].append((len(self.traces['s1']), True))
-        elif action == 2:
-            self.traces['s0'].append((len(self.traces['s0']), True))
-            self.traces['s1'].append((len(self.traces['s1']), False))
         obs = np.array(self.observation)
         info = {
             'satisfiable': False

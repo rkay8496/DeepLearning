@@ -19,7 +19,7 @@ class DQNAgent:
         # "gamma": discounted factor
         # "exploration_proba_decay": decay of the exploration probability
         # "batch_size": size of experiences we sample to train the DNN
-        self.lr = 0.1
+        self.lr = 0.0000000001
         self.gamma = 0.99
         self.exploration_proba = 1.0
         self.exploration_proba_decay = 0.001
@@ -83,7 +83,6 @@ class DQNAgent:
         # We iterate over the selected experiences
         for experience in batch_sample:
             # We compute the Q-values of S_t
-            print(experience['current_state'])
             q_current_state = self.model.predict(experience["current_state"])
             # We compute the Q-target using Bellman optimality equation
             q_target = experience["reward"]
@@ -96,7 +95,7 @@ class DQNAgent:
 env = DoorInterlockSystemEnv()
 state_size = env.observation_space.n
 action_size = env.action_space.n
-episodes = 100
+episodes = 3000
 iterations = 10
 agent = DQNAgent(state_size, action_size)
 total_steps = 0
@@ -150,6 +149,52 @@ agent.model.save('DoorInterlockSystem_v1.h5')
 model = tf.keras.models.load_model('./DoorInterlockSystem_v1.h5')
 print(model.predict([0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
                      10, 11, 12, 13, 14, 15, 16, 17]))
+
+ep = [i for i in range(episodes)]
+plt.plot(ep, total_avgr, 'b')
+plt.title("avg reward Vs episodes")
+plt.xlabel("episodes")
+plt.ylabel("average reward per 100 episodes")
+plt.grid(True)
+plt.show()
+
+ep_reward = []
+total_avgr = []
+solved = 0
+
+for e in range(episodes):
+    total_reward = 0
+    current_state = env.reset()
+    current_state = np.array([current_state])
+    rewards = []
+    for step in range(1, iterations):
+        action = agent.compute_action(current_state)
+        next_state, reward, done, info = env.step(action)
+        total_reward += reward
+        rewards.append(reward)
+        next_state = np.array([next_state])
+        current_state = next_state
+        if done and info['satisfiable']:
+            solved += 1
+            ep_reward.append(total_reward)
+            avg_reward = np.mean(ep_reward[-100:])
+            total_avgr.append(avg_reward)
+            print("total reward after {} episodes is {} and avg reward is {} and number of solved is {}".format(e,
+                                                                                                                total_reward,
+                                                                                                                avg_reward,
+                                                                                                                solved))
+            break
+        elif done and not info['satisfiable']:
+            ep_reward.append(total_reward)
+            avg_reward = np.mean(ep_reward[-100:])
+            total_avgr.append(avg_reward)
+            print("total reward after {} episodes is {} and avg reward is {} and number of solved is {}".format(e,
+                                                                                                                total_reward,
+                                                                                                                avg_reward,
+                                                                                                                solved))
+            break
+        else:
+            env.take_env()
 
 ep = [i for i in range(episodes)]
 plt.plot(ep, total_avgr, 'b')
