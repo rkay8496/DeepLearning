@@ -14,12 +14,12 @@ class critic(tf.keras.Model):
     def __init__(self):
         super().__init__()
         self.d1 = tf.keras.layers.Dense(128, activation='relu')
-        self.d2 = tf.keras.layers.Dense(1536, activation='relu')
+        # self.d2 = tf.keras.layers.Dense(1536, activation='relu')
         self.v = tf.keras.layers.Dense(1, activation=None)
 
     def call(self, input_data):
         x = self.d1(input_data)
-        x = self.d2(x)
+        # x = self.d2(x)
         v = self.v(x)
         return v
 
@@ -28,17 +28,17 @@ class actor(tf.keras.Model):
     def __init__(self):
         super().__init__()
         self.d1 = tf.keras.layers.Dense(state_size, input_shape=(1,), activation='relu')
-        self.d2 = tf.keras.layers.Dense(1536, activation='relu')
+        # self.d2 = tf.keras.layers.Dense(1536, activation='relu')
         self.a = tf.keras.layers.Dense(action_size, activation='softmax')
         self.model = tf.keras.models.Sequential([
             self.d1,
-            self.d2,
+            # self.d2,
             self.a
         ])
 
     def call(self, input_data):
         x = self.d1(input_data)
-        x = self.d2(x)
+        # x = self.d2(x)
         a = self.a(x)
         return a
 
@@ -46,8 +46,8 @@ class actor(tf.keras.Model):
 class agent():
     def __init__(self, gamma=0.99):
         self.gamma = gamma
-        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.0000001)
-        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.0000001)
+        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.0000000001)
+        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.0000000001)
         self.actor = actor()
         self.critic = critic()
 
@@ -127,18 +127,12 @@ def preprocess1(states, actions, rewards, gamma):
     return states, actions, discnt_rewards
 
 
-tf.random.set_seed(336699)
 agentoo7 = agent()
-episodes = 2000
-iterations = 10
+episodes = 10000
+iterations = 20
 ep_reward = []
 total_avgr = []
-solved = 0
 for epi in range(episodes):
-    done = False
-    info = {
-        'satisfiable': False
-    }
     state = env.reset()
     state = np.array([state])
     total_reward = 0
@@ -158,33 +152,29 @@ for epi in range(episodes):
         next_state = np.array([next_state])
         state = next_state
         total_reward += reward
-        if done and info['satisfiable']:
-            solved += 1
+
+        if (step == iterations - 1) or done:
             ep_reward.append(total_reward)
             avg_reward = np.mean(ep_reward[-100:])
             total_avgr.append(avg_reward)
-            print("total reward after {} episodes is {} and avg reward is {} and number of solved is {}".format(epi, total_reward, avg_reward, solved))
+            print("total reward after {} episodes is {} and avg reward is {}".format(epi, total_reward, avg_reward))
             states, actions, discnt_rewards = preprocess1(states, actions, rewards, 1)
             al, cl = agentoo7.learn(states, actions, discnt_rewards)
             print(f"al{al}")
             print(f"cl{cl}")
             break
-        elif done and not info['satisfiable']:
-            ep_reward.append(total_reward)
-            avg_reward = np.mean(ep_reward[-100:])
-            total_avgr.append(avg_reward)
-            print("total reward after {} episodes is {} and avg reward is {} and number of solved is {}".format(epi, total_reward, avg_reward, solved))
-            break
         else:
-            env.take_env()
+            computed = env.take_env()
+            if not computed:
+                break
 
 agentoo7.actor.model.save('./A2C.h5')
 
 model = tf.keras.models.load_model('./A2C.h5')
 model.load_weights('./A2C.h5')
-print(model.predict(list(range(18))))
+print(model.predict(list(range(env.observation_space.n))))
 
-ep = [i for i in range(episodes)]
+ep = [i for i in range(len(total_avgr))]
 plt.plot(ep, total_avgr, 'b')
 plt.title("avg reward Vs episodes")
 plt.xlabel("episodes")

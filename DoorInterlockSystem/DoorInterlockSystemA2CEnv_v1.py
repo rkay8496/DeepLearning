@@ -13,23 +13,24 @@ class ActorCritic(gym.Env):
         self.size = size  # The size of the square grid
         self.window_size = 512 # The size of the PyGame window
 
-        self.observation_value = []
+        self.observation_value = [[0, 0, 0, 0, 1], [0, 0, 1, 0, 1], [0, 1, 1, 0, 0], [1, 0, 0, 0, 0], [1, 0, 1, 0, 0],
+                                 [1, 0, 0, 1, 0], [1, 0, 0, 1, 0], [0, 0, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0]]
         # p0, p1
         # closed, partially_open, open
-        for i in ['00', '01', '10']:
+        # for i in ['00', '01', '10']:
             # q0, q1
             # nothing, close, open
-            for j in ['00', '01', '10']:
+            # for j in ['00', '01', '10']:
                 # r0
                 # off, on
-                for k in ['0', '1']:
-                    value = []
-                    value.append(i[0])
-                    value.append(i[1])
-                    value.append(j[0])
-                    value.append(j[1])
-                    value.append(k)
-                    self.observation_value.append(value)
+                # for k in ['0', '1']:
+                #     value = []
+                #     value.append(i[0])
+                #     value.append(i[1])
+                #     value.append(j[0])
+                #     value.append(j[1])
+                #     value.append(k)
+                #     self.observation_value.append(value)
 
         # s0, s1
         # nothing, turn_off, turn_on
@@ -97,10 +98,10 @@ class ActorCritic(gym.Env):
         self.specification = '(' + self.env_specification + ' -> ' + self.sys_specification + ')'
 
         # [p0, p1, q0, q1, r0]
-        self.observation_space = Discrete(18)
+        self.observation_space = Discrete(9)
         # [s0, s1]
         self.action_space = Discrete(3)
-        self.observation = 9
+        self.observation = 0
         self.action = 0
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
@@ -139,9 +140,14 @@ class ActorCritic(gym.Env):
                 self.traces['r0'].pop(len(self.traces['r0']) - 1)
                 return False
 
+        cnt = 1
         computed = compute_observation()
         while not computed:
             computed = compute_observation()
+            cnt += 1
+            if cnt == 19 and not computed:
+                break
+        return computed
 
     def step(self, action):
         self.action = action
@@ -163,8 +169,8 @@ class ActorCritic(gym.Env):
             phi = mtl.parse(self.sys_properties[1]['property'])
             liveness_eval = phi(self.traces, quantitative=False)
         if safety_eval and liveness_eval:
-            reward += 100
-            done = True
+            reward += 10
+            done = False
             info['satisfiable'] = True
         elif safety_eval and not liveness_eval:
             reward += 1
@@ -175,7 +181,7 @@ class ActorCritic(gym.Env):
         #     done = False
         #     info['satisfiable'] = False
         else:
-            reward += -1
+            reward += -10
             done = True
             info['satisfiable'] = False
         return obs, reward, done, info
