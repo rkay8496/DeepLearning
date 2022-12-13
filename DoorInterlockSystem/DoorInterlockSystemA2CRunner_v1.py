@@ -46,8 +46,8 @@ class actor(tf.keras.Model):
 class agent():
     def __init__(self, gamma=0.99):
         self.gamma = gamma
-        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.0000000001)
-        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.0000000001)
+        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=1e-3)
+        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=1e-3)
         self.actor = actor()
         self.critic = critic()
 
@@ -128,8 +128,8 @@ def preprocess1(states, actions, rewards, gamma):
 
 
 agentoo7 = agent()
-episodes = 10000
-iterations = 20
+episodes = 250
+iterations = 10
 ep_reward = []
 total_avgr = []
 for epi in range(episodes):
@@ -153,7 +153,7 @@ for epi in range(episodes):
         state = next_state
         total_reward += reward
 
-        if (step == iterations - 1) or done:
+        if step == iterations - 1:
             ep_reward.append(total_reward)
             avg_reward = np.mean(ep_reward[-100:])
             total_avgr.append(avg_reward)
@@ -162,6 +162,7 @@ for epi in range(episodes):
             al, cl = agentoo7.learn(states, actions, discnt_rewards)
             print(f"al{al}")
             print(f"cl{cl}")
+            print(agentoo7.actor.model.predict(list(range(env.observation_space.n))))
             break
         else:
             computed = env.take_env()

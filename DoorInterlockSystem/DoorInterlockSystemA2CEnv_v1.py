@@ -13,8 +13,10 @@ class ActorCritic(gym.Env):
         self.size = size  # The size of the square grid
         self.window_size = 512 # The size of the PyGame window
 
-        self.observation_value = [[0, 0, 0, 0, 1], [0, 0, 1, 0, 1], [0, 1, 1, 0, 0], [1, 0, 0, 0, 0], [1, 0, 1, 0, 0],
-                                 [1, 0, 0, 1, 0], [1, 0, 0, 1, 0], [0, 0, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0]]
+        self.observation_value = [['closed', 'none', '+'], ['closed', 'open', '+'], ['partially', 'open', '-'],
+                                  ['opened', 'none', '-'], ['opened', 'open', '-'], ['opened', 'close', '-'],
+                                  ['partially', 'close', '-'], ['closed', 'none', '-'], ['closed', 'open', '-'],
+                                  ['closed', 'close', '-']]
         # p0, p1
         # closed, partially_open, open
         # for i in ['00', '01', '10']:
@@ -34,25 +36,28 @@ class ActorCritic(gym.Env):
 
         # s0, s1
         # nothing, turn_off, turn_on
-        self.action_value = [[0, 0], [0, 1], [1, 0]]
+        self.action_value = [['nothing'], ['off'], ['on']]
 
         self.env_properties = [
             {
 
                 'category': 'safety',
-                'property': '((G((((~p0 & ~p1) & (~q0 & ~q1)) -> (X~p0 & X~p1)))) & '
-                            '(G((((p0 & ~p1) & (~q0 & ~q1)) -> (Xp0 & X~p1)))) & '
-                            '(G((((~p0 & ~p1) & (q0 & ~q1)) -> (X~p0 & Xp1)))) & '
-                            '(G((((p0 & ~p1) & (~q0 & q1)) -> (X~p0 & Xp1)))) & '
-                            '(G((((~p0 & p1) & (q0 & ~q1)) -> (Xp0 & X~p1)))) & '
-                            '(G((((~p0 & p1) & (~q0 & q1)) -> (X~p0 & X~p1)))) & '
-                            '(G((~p0 & ~p1) -> (~(X~q0 & Xq1)))) & '
-                            '(G((p0 & ~p1) -> (~(Xq0 & X~q1)))) & '
-                            '(G(((q0 & ~q1) & (~(Xp0 & X~p1))) -> (Xq0 & X~q1))) & '
-                            '(G(((~q0 & q1) & (~(X~p0 & X~p1))) -> (X~q0 & Xq1))) & '
-                            '(G((~s0 & s1) -> (X~r0))) & '
-                            '(G((s0 & ~s1) -> (Xr0))) & '
-                            '(G((~s0 & ~s1) -> (Xr0 <-> r0))))',
+                'property': '(G((closed & none) -> Xclosed) & ' # door
+                            'G((opened & none) -> Xopened) & '
+                            'G((closed & open) -> Xpartially) & '
+                            'G((opened & close) -> Xpartially) & '
+                            'G((partially & open) -> Xopened) & '
+                            'G((partially & close) -> Xclosed) & '
+                            'G((closed & ~partially & ~opened) | (~closed & partially & ~opened) | '
+                            '(~closed & ~partially & opened)) & '
+                            'G(closed -> (Xopen | Xnone)) & ' # request
+                            'G(opened -> (Xclose | Xnone)) & '
+                            'G((open & X~opened) -> Xopen) & '
+                            'G((close & X~closed) -> Xclose) & '
+                            'G((none & ~close & ~open) | (~none & close & ~open) | (~none & ~close & open)) & '
+                            'G(off -> X~power) & '  # power
+                            'G(on -> Xpower) & '
+                            'G(nothing -> (Xpower <-> power)))',
                 'quantitative': False
             },
             {
@@ -74,9 +79,10 @@ class ActorCritic(gym.Env):
         self.sys_properties = [
             {
                 'category': 'safety',
-                'property': '((G((Xq0 & X~q1) -> (X~s0 & Xs1))) & '
-                            '(G(((X~p0 & X~p1) & (X~q0 & Xq1)) -> (Xs0 & X~s1))) & '
-                            '(G((X~q0 & X~q1) -> (X~s0 & X~s1))))',
+                'property': '(G(Xopen -> Xoff) & '
+                            'G((Xclosed & Xclose) -> Xon) & '
+                            'G(Xnone -> Xnothing) & '
+                            'G((nothing & ~off & ~on) | (~nothing & off & ~on) | (~nothing & ~off & on)))',
                 'quantitative': False
             },
             {
@@ -115,11 +121,13 @@ class ActorCritic(gym.Env):
         def compute_observation():
             obs = self.observation_space.sample()
             value = self.observation_value[obs]
-            self.traces['p0'].append((len(self.traces['p0']), True if value[0] == 1 else False))
-            self.traces['p1'].append((len(self.traces['p1']), True if value[1] == 1 else False))
-            self.traces['q0'].append((len(self.traces['q0']), True if value[2] == 1 else False))
-            self.traces['q1'].append((len(self.traces['q1']), True if value[3] == 1 else False))
-            self.traces['r0'].append((len(self.traces['r0']), True if value[4] == 1 else False))
+            self.traces['closed'].append((len(self.traces['closed']), True if value[0] == 'closed' else False))
+            self.traces['partially'].append((len(self.traces['partially']), True if value[0] == 'partially' else False))
+            self.traces['opened'].append((len(self.traces['opened']), True if value[0] == 'opened' else False))
+            self.traces['none'].append((len(self.traces['none']), True if value[1] == 'none' else False))
+            self.traces['close'].append((len(self.traces['close']), True if value[1] == 'close' else False))
+            self.traces['open'].append((len(self.traces['open']), True if value[1] == 'open' else False))
+            self.traces['power'].append((len(self.traces['power']), True if value[2] == '+' else False))
 
             safety_eval = True
             if len(self.sys_properties[0]['property']) > 0:
@@ -133,11 +141,13 @@ class ActorCritic(gym.Env):
                 self.observation = obs
                 return True
             else:
-                self.traces['p0'].pop(len(self.traces['p0']) - 1)
-                self.traces['p1'].pop(len(self.traces['p1']) - 1)
-                self.traces['q0'].pop(len(self.traces['q0']) - 1)
-                self.traces['q1'].pop(len(self.traces['q1']) - 1)
-                self.traces['r0'].pop(len(self.traces['r0']) - 1)
+                self.traces['closed'].pop(len(self.traces['closed']) - 1)
+                self.traces['partially'].pop(len(self.traces['partially']) - 1)
+                self.traces['opened'].pop(len(self.traces['opened']) - 1)
+                self.traces['none'].pop(len(self.traces['none']) - 1)
+                self.traces['close'].pop(len(self.traces['close']) - 1)
+                self.traces['open'].pop(len(self.traces['open']) - 1)
+                self.traces['power'].pop(len(self.traces['power']) - 1)
                 return False
 
         cnt = 1
@@ -145,15 +155,16 @@ class ActorCritic(gym.Env):
         while not computed:
             computed = compute_observation()
             cnt += 1
-            if cnt == 19 and not computed:
+            if cnt == 9 and not computed:
                 break
         return computed
 
     def step(self, action):
         self.action = action
         value = self.action_value[self.action]
-        self.traces['s0'].append((len(self.traces['s0']), True if value[0] == 1 else False))
-        self.traces['s1'].append((len(self.traces['s1']), True if value[1] == 1 else False))
+        self.traces['nothing'].append((len(self.traces['nothing']), True if value[0] == 'nothing' else False))
+        self.traces['off'].append((len(self.traces['off']), True if value[0] == 'off' else False))
+        self.traces['on'].append((len(self.traces['on']), True if value[0] == 'on' else False))
 
         obs = np.array(self.observation)
         info = {
@@ -189,16 +200,19 @@ class ActorCritic(gym.Env):
     def reset(self):
         self.traces = {
             # door
-            'p0': [(0, False)],
-            'p1': [(0, False)],
+            'closed': [(0, True)],
+            'partially': [(0, False)],
+            'opened': [(0, False)],
             # request
-            'q0': [(0, False)],
-            'q1': [(0, False)],
+            'none': [(0, True)],
+            'close': [(0, False)],
+            'open': [(0, False)],
             # power
-            'r0': [(0, True)],
+            'power': [(0, True)],
             # action
-            's0': [(0, False)],
-            's1': [(0, False)]
+            'nothing': [(0, True)],
+            'off': [(0, False)],
+            'on': [(0, False)]
         }
         self.take_env()
         return np.array(self.observation)

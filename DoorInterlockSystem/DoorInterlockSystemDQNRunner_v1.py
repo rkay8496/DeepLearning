@@ -19,7 +19,7 @@ class DQNAgent:
         # "gamma": discounted factor
         # "exploration_proba_decay": decay of the exploration probability
         # "batch_size": size of experiences we sample to train the DNN
-        self.lr = 0.0000000001
+        self.lr = 0.01
         self.gamma = 0.99
         self.exploration_proba = 1.0
         self.exploration_proba_decay = 0.001
@@ -95,7 +95,7 @@ class DQNAgent:
 env = DoorInterlockSystemEnv()
 state_size = env.observation_space.n
 action_size = env.action_space.n
-episodes = 3000
+episodes = 1000
 iterations = 10
 agent = DQNAgent(state_size, action_size)
 total_steps = 0
@@ -116,10 +116,9 @@ for e in range(episodes):
         total_reward += reward
         rewards.append(reward)
         next_state = np.array([next_state])
-        agent.store_episode(current_state, action, reward, next_state, done)
+        agent.store_episode(current_state, action, reward, next_state, True if step == iterations - 1 else False)
         current_state = next_state
-        if done and info['satisfiable']:
-            solved += 1
+        if step == iterations - 1:
             ep_reward.append(total_reward)
             avg_reward = np.mean(ep_reward[-100:])
             total_avgr.append(avg_reward)
@@ -128,29 +127,21 @@ for e in range(episodes):
                                                                                                                 total_reward,
                                                                                                                 avg_reward,
                                                                                                                 solved))
-            break
-        elif done and not info['satisfiable']:
-            ep_reward.append(total_reward)
-            avg_reward = np.mean(ep_reward[-100:])
-            total_avgr.append(avg_reward)
-            agent.update_exploration_probability()
-            print("total reward after {} episodes is {} and avg reward is {} and number of solved is {}".format(e,
-                                                                                                                total_reward,
-                                                                                                                avg_reward,
-                                                                                                                solved))
+            print(agent.model.predict(list(range(env.observation_space.n))))
             break
         else:
-            env.take_env()
+            computed = env.take_env()
+            if not computed:
+                break
     if total_steps >= batch_size:
         agent.train()
 
 agent.model.save('DoorInterlockSystem_v1.h5')
 
 model = tf.keras.models.load_model('./DoorInterlockSystem_v1.h5')
-print(model.predict([0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-                     10, 11, 12, 13, 14, 15, 16, 17]))
+print(model.predict(list(range(env.observation_space.n))))
 
-ep = [i for i in range(episodes)]
+ep = [i for i in range(len(total_avgr))]
 plt.plot(ep, total_avgr, 'b')
 plt.title("avg reward Vs episodes")
 plt.xlabel("episodes")
