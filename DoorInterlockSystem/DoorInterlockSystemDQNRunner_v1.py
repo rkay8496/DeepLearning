@@ -19,7 +19,7 @@ class DQNAgent:
         # "gamma": discounted factor
         # "exploration_proba_decay": decay of the exploration probability
         # "batch_size": size of experiences we sample to train the DNN
-        self.lr = 0.003
+        self.lr = 0.001
         self.gamma = 0.99
         self.exploration_proba = 1.0
         self.exploration_proba_decay = 0.005
@@ -95,7 +95,7 @@ class DQNAgent:
 env = DoorInterlockSystemEnv()
 state_size = env.observation_space.n
 action_size = env.action_space.n
-episodes = 1000
+episodes = 2000
 iterations = 10
 agent = DQNAgent(state_size, action_size)
 total_steps = 0
