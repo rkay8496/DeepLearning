@@ -17,6 +17,7 @@ class DoorInterlockSystemEnv():
                                   ['opened', 'none', '-'], ['opened', 'open', '-'], ['opened', 'close', '-'],
                                   ['partially', 'close', '-'], ['closed', 'none', '-'], ['closed', 'open', '-'],
                                   ['closed', 'close', '-']]
+
         # p0, p1
         # closed, partially_open, open
         # for i in ['00', '01', '10']:
@@ -181,7 +182,7 @@ class DoorInterlockSystemEnv():
             liveness_eval = phi(self.traces, quantitative=False)
         if safety_eval and liveness_eval:
             reward += 10
-            done = False
+            done = True
             info['satisfiable'] = True
         elif safety_eval and not liveness_eval:
             reward += 1
@@ -200,21 +201,29 @@ class DoorInterlockSystemEnv():
     def reset(self):
         self.traces = {
             # door
-            'closed': [(0, True)],
-            'partially': [(0, False)],
-            'opened': [(0, False)],
+            'closed': [],
+            'partially': [],
+            'opened': [],
             # request
-            'none': [(0, True)],
-            'close': [(0, False)],
-            'open': [(0, False)],
+            'none': [],
+            'close': [],
+            'open': [],
             # power
-            'power': [(0, True)],
+            'power': [],
             # action
-            'nothing': [(0, True)],
-            'off': [(0, False)],
-            'on': [(0, False)]
+            'nothing': [],
+            'off': [],
+            'on': []
         }
-        self.take_env()
+        self.observation = self.observation_space.sample()
+        value = self.observation_value[self.observation]
+        self.traces['closed'].append((len(self.traces['closed']), True if value[0] == 'closed' else False))
+        self.traces['partially'].append((len(self.traces['partially']), True if value[0] == 'partially' else False))
+        self.traces['opened'].append((len(self.traces['opened']), True if value[0] == 'opened' else False))
+        self.traces['none'].append((len(self.traces['none']), True if value[1] == 'none' else False))
+        self.traces['close'].append((len(self.traces['close']), True if value[1] == 'close' else False))
+        self.traces['open'].append((len(self.traces['open']), True if value[1] == 'open' else False))
+        self.traces['power'].append((len(self.traces['power']), True if value[2] == '+' else False))
         return np.array(self.observation)
 
     def render(self):

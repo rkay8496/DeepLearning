@@ -1,3 +1,5 @@
+import pickle
+
 import numpy as np
 import tensorflow as tf
 import gym
@@ -13,13 +15,13 @@ action_size = env.action_space.n
 class critic(tf.keras.Model):
     def __init__(self):
         super().__init__()
-        self.d1 = tf.keras.layers.Dense(128, activation='relu')
-        # self.d2 = tf.keras.layers.Dense(1536, activation='relu')
+        self.d1 = tf.keras.layers.Dense(state_size, activation='relu')
+        self.d2 = tf.keras.layers.Dense(1536, activation='relu')
         self.v = tf.keras.layers.Dense(1, activation=None)
 
     def call(self, input_data):
         x = self.d1(input_data)
-        # x = self.d2(x)
+        x = self.d2(x)
         v = self.v(x)
         return v
 
@@ -28,17 +30,17 @@ class actor(tf.keras.Model):
     def __init__(self):
         super().__init__()
         self.d1 = tf.keras.layers.Dense(state_size, input_shape=(1,), activation='relu')
-        # self.d2 = tf.keras.layers.Dense(1536, activation='relu')
+        self.d2 = tf.keras.layers.Dense(1536, activation='relu')
         self.a = tf.keras.layers.Dense(action_size, activation='softmax')
         self.model = tf.keras.models.Sequential([
             self.d1,
-            # self.d2,
+            self.d2,
             self.a
         ])
 
     def call(self, input_data):
         x = self.d1(input_data)
-        # x = self.d2(x)
+        x = self.d2(x)
         a = self.a(x)
         return a
 
@@ -46,8 +48,8 @@ class actor(tf.keras.Model):
 class agent():
     def __init__(self, gamma=0.99):
         self.gamma = gamma
-        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=1e-3)
-        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=1e-3)
+        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.0000001)
+        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.0000001)
         self.actor = actor()
         self.critic = critic()
 
@@ -127,14 +129,19 @@ def preprocess1(states, actions, rewards, gamma):
     return states, actions, discnt_rewards
 
 
+tf.random.set_seed(336699)
 agentoo7 = agent()
-episodes = 250
+episodes = 200000
 iterations = 10
 ep_reward = []
 total_avgr = []
 for epi in range(episodes):
     state = env.reset()
     state = np.array([state])
+    action = agentoo7.act(state)
+    next_state, reward, done, info = env.step(action)
+    next_state = np.array([next_state])
+    state = next_state
     total_reward = 0
     all_aloss = []
     all_closs = []
@@ -143,6 +150,9 @@ for epi in range(episodes):
     actions = []
 
     for step in range(1, iterations):
+        computed = env.take_env()
+        if not computed:
+            break
         action = agentoo7.act(state)
         next_state, reward, done, info = env.step(action)
         rewards.append(reward)
@@ -153,7 +163,7 @@ for epi in range(episodes):
         state = next_state
         total_reward += reward
 
-        if step == iterations - 1:
+        if done and info['satisfiable']:
             ep_reward.append(total_reward)
             avg_reward = np.mean(ep_reward[-100:])
             total_avgr.append(avg_reward)
@@ -162,17 +172,30 @@ for epi in range(episodes):
             al, cl = agentoo7.learn(states, actions, discnt_rewards)
             print(f"al{al}")
             print(f"cl{cl}")
-            print(agentoo7.actor.model.predict(list(range(env.observation_space.n))))
             break
-        else:
-            computed = env.take_env()
-            if not computed:
-                break
+        elif done and not info['satisfiable']:
+            break
+
+        # if step == iterations - 1 and done and info['satisfiable']:
+        #     ep_reward.append(total_reward)
+        #     avg_reward = np.mean(ep_reward[-100:])
+        #     total_avgr.append(avg_reward)
+        #     print("total reward after {} episodes is {} and avg reward is {}".format(epi, total_reward, avg_reward))
+        #     states, actions, discnt_rewards = preprocess1(states, actions, rewards, 1)
+        #     al, cl = agentoo7.learn(states, actions, discnt_rewards)
+        #     print(f"al{al}")
+        #     print(f"cl{cl}")
+        #     break
+        # elif not done and not info['satisfiable']:
+        #     break
+        # else:
+        #     computed = env.take_env()
+        #     if not computed:
+        #         break
 
 agentoo7.actor.model.save('./A2C.h5')
 
 model = tf.keras.models.load_model('./A2C.h5')
-model.load_weights('./A2C.h5')
 print(model.predict(list(range(env.observation_space.n))))
 
 ep = [i for i in range(len(total_avgr))]

@@ -134,3 +134,27 @@ for e in range(n_episodes):
     # than we tain our model
     if total_steps >= batch_size:
         agent.train()
+
+agent.model.save('./CartPole.h5')
+
+model = tf.keras.models.load_model('./CartPole.h5')
+print(model.predict(env.observation_space.sample()))
+
+def make_video():
+    env_to_wrap = gym.make('CartPole-v1')
+    env = gym.wrappers.Monitor(env_to_wrap, 'videos', force = True)
+    rewards = 0
+    steps = 0
+    done = False
+    state = env.reset()
+    state = np.array([state])
+    while not done:
+        action = agent.compute_action(state)
+        state, reward, done, _ = env.step(action)
+        state = np.array([state])
+        steps += 1
+        rewards += reward
+    print(rewards)
+    env.close()
+    env_to_wrap.close()
+make_video()
