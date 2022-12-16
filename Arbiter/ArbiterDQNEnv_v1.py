@@ -1,24 +1,21 @@
 import pygame
 import numpy as np
 from gym.spaces import Discrete, MultiBinary, MultiDiscrete, Dict
+import mtl
 import gym
 import stl
 
-class DoorInterlockSystemEnv():
+class ArbiterEnv():
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, render_mode=None, size=5, sample_size=1000):
+    def __init__(self, render_mode=None, size=5):
         super().__init__()
 
         self.size = size  # The size of the square grid
         self.window_size = 512  # The size of the PyGame window
 
-        self.observation_value = [['closed', 'none', '+'], ['closed', 'open', '+'], ['partially', 'open', '-'],
-                                  ['opened', 'none', '-'], ['opened', 'open', '-'], ['opened', 'close', '-'],
-                                  ['partially', 'close', '-'], ['closed', 'none', '-'], ['closed', 'open', '-'],
-                                  ['closed', 'close', '-']]
-        self.sample_size = sample_size
-        self.samples = np.random.randint(0, len(self.observation_value), self.sample_size).tolist()
+        self.observation_value = [['-', '-'], ['-', '+'], ['+', '-'], ['+', '+']]
+
         # p0, p1
         # closed, partially_open, open
         # for i in ['00', '01', '10']:
@@ -38,33 +35,22 @@ class DoorInterlockSystemEnv():
 
         # s0, s1
         # nothing, turn_off, turn_on
-        self.action_value = [['nothing'], ['off'], ['on']]
+        self.action_value = [['-', '-'], ['-', '+'], ['+', '-'], ['+', '+']]
 
         self.env_properties = [
             {
+
                 'category': 'safety',
-                'property': '(G((closed & none) -> Xclosed) & '  # door
-                            'G((opened & none) -> Xopened) & '
-                            'G((closed & open) -> Xpartially) & '
-                            'G((opened & close) -> Xpartially) & '
-                            'G((partially & open) -> Xopened) & '
-                            'G((partially & close) -> Xclosed) & '
-                            'G((closed & ~partially & ~opened) | (~closed & partially & ~opened) | '
-                            '(~closed & ~partially & opened)) & '
-                            'G(closed -> (Xopen | Xnone)) & '  # request
-                            'G(opened -> (Xclose | Xnone)) & '
-                            'G((open & X~opened) -> Xopen) & '
-                            'G((close & X~closed) -> Xclose) & '
-                            'G((none & ~close & ~open) | (~none & close & ~open) | (~none & ~close & open)) & '
-                            'G(off -> X~power) & '  # power
-                            'G(on -> Xpower) & '
-                            'G(nothing -> (Xpower <-> power)))',
-                'quantitative': False
+                'property': '(G((p & ~r) -> F[1, 1] p) & '  # door
+                            'G((q & ~s) -> F[1, 1] q) & '
+                            'G((p & r & F[1, 1] ~r) -> F[1, 1] ~p) & '
+                            'G((q & s & F[1, 1] ~s) -> F[1, 1] ~q))',
+                'quantitative': True
             },
             {
                 'category': 'liveness',
                 'property': '',
-                'quantitative': False
+                'quantitative': True
             },
         ]
 
@@ -80,16 +66,15 @@ class DoorInterlockSystemEnv():
         self.sys_properties = [
             {
                 'category': 'safety',
-                'property': '(G(Xopen -> Xoff) & '
-                            'G((Xclosed & Xclose) -> Xon) & '
-                            'G(Xnone -> Xnothing) & '
-                            'G((nothing & ~off & ~on) | (~nothing & off & ~on) | (~nothing & ~off & on)))',
-                'quantitative': False
+                'property': '(G(~(r & s)) & '
+                            'G(F(p -> r)) & '
+                            'G(F(q -> s)))',
+                'quantitative': True
             },
             {
                 'category': 'liveness',
                 'property': '',
-                'quantitative': False
+                'quantitative': True
             },
         ]
 
@@ -104,10 +89,8 @@ class DoorInterlockSystemEnv():
 
         self.specification = '(' + self.env_specification + ' -> ' + self.sys_specification + ')'
 
-        # [p0, p1, q0, q1, r0]
-        self.observation_space = Discrete(10)
-        # [s0, s1]
-        self.action_space = Discrete(3)
+        self.observation_space = Discrete(4)
+        self.action_space = Discrete(4)
         self.observation = 0
         self.action = 0
 
@@ -122,33 +105,22 @@ class DoorInterlockSystemEnv():
         def compute_observation():
             obs = self.observation_space.sample()
             value = self.observation_value[obs]
-            self.traces['closed'].append((len(self.traces['closed']), True if value[0] == 'closed' else False))
-            self.traces['partially'].append((len(self.traces['partially']), True if value[0] == 'partially' else False))
-            self.traces['opened'].append((len(self.traces['opened']), True if value[0] == 'opened' else False))
-            self.traces['none'].append((len(self.traces['none']), True if value[1] == 'none' else False))
-            self.traces['close'].append((len(self.traces['close']), True if value[1] == 'close' else False))
-            self.traces['open'].append((len(self.traces['open']), True if value[1] == 'open' else False))
-            self.traces['power'].append((len(self.traces['power']), True if value[2] == '+' else False))
-
+            self.traces['p'].append((len(self.traces['p']), 1 if value[0] == '+' else 0))
+            self.traces['q'].append((len(self.traces['q']), 1 if value[0] == '+' else 0))
             safety_eval = True
             if len(self.sys_properties[0]['property']) > 0:
                 phi = stl.parse(self.sys_properties[0]['property'])
-                safety_eval = phi(self.traces, quantitative=self.sys_properties[0]['quantitative'])
+                safety_eval = True if phi(self.traces) >= 0 else False
             liveness_eval = True
             if len(self.sys_properties[1]['property']) > 0:
                 phi = stl.parse(self.sys_properties[1]['property'])
-                liveness_eval = phi(self.traces, quantitative=self.sys_properties[0]['quantitative'])
+                liveness_eval = True if phi(self.traces) >= 0 else False
             if safety_eval and liveness_eval:
                 self.observation = obs
                 return True
             else:
-                self.traces['closed'].pop(len(self.traces['closed']) - 1)
-                self.traces['partially'].pop(len(self.traces['partially']) - 1)
-                self.traces['opened'].pop(len(self.traces['opened']) - 1)
-                self.traces['none'].pop(len(self.traces['none']) - 1)
-                self.traces['close'].pop(len(self.traces['close']) - 1)
-                self.traces['open'].pop(len(self.traces['open']) - 1)
-                self.traces['power'].pop(len(self.traces['power']) - 1)
+                self.traces['p'].pop(len(self.traces['p']) - 1)
+                self.traces['q'].pop(len(self.traces['q']) - 1)
                 return False
 
         cnt = 1
@@ -163,67 +135,51 @@ class DoorInterlockSystemEnv():
     def step(self, action):
         self.action = action
         value = self.action_value[self.action]
-        self.traces['nothing'].append((len(self.traces['nothing']), True if value[0] == 'nothing' else False))
-        self.traces['off'].append((len(self.traces['off']), True if value[0] == 'off' else False))
-        self.traces['on'].append((len(self.traces['on']), True if value[0] == 'on' else False))
+        self.traces['r'].append((len(self.traces['r']), 1 if value[0] == '+' else 0))
+        self.traces['s'].append((len(self.traces['s']), 1 if value[0] == '+' else 0))
 
         obs = np.array(self.observation)
-
-        done = False
         info = {
             'satisfiable': False
         }
         reward = 0
         safety_eval = True
-        if len(self.sys_properties[0]['property']) >= 0:
+        if len(self.sys_properties[0]['property']) > 0:
             phi = stl.parse(self.sys_properties[0]['property'])
-            safety_eval = phi(self.traces, quantitative=self.sys_properties[0]['quantitative'])
+            safety_eval = True if phi(self.traces) >= 0 else False
         liveness_eval = True
         if len(self.sys_properties[1]['property']) > 0:
             phi = stl.parse(self.sys_properties[1]['property'])
-            liveness_eval = phi(self.traces, quantitative=self.sys_properties[0]['quantitative'])
-        if safety_eval:
-            reward += 1
-        if liveness_eval:
-            reward += 10
+            liveness_eval = True if phi(self.traces) >= 0 else False
         if safety_eval and liveness_eval:
-            done = True
+            reward += 10
+            done = False
             info['satisfiable'] = True
         elif safety_eval and not liveness_eval:
+            reward += 1
             done = False
             info['satisfiable'] = False
-        elif not safety_eval:
+        # elif not safety_eval and liveness_eval:
+        #     reward += -500
+        #     done = False
+        #     info['satisfiable'] = False
+        else:
+            reward += -10
             done = True
             info['satisfiable'] = False
         return obs, reward, done, info
 
     def reset(self):
         self.traces = {
-            # door
-            'closed': [],
-            'partially': [],
-            'opened': [],
-            # request
-            'none': [],
-            'close': [],
-            'open': [],
-            # power
-            'power': [],
-            # action
-            'nothing': [],
-            'off': [],
-            'on': []
+            'p': [],
+            'q': [],
+            'r': [],
+            's': [],
         }
-        self.observation = self.samples.pop(0)
-        # self.observation = self.observation_space.sample()
+        self.observation = self.observation_space.sample()
         value = self.observation_value[self.observation]
-        self.traces['closed'].append((len(self.traces['closed']), True if value[0] == 'closed' else False))
-        self.traces['partially'].append((len(self.traces['partially']), True if value[0] == 'partially' else False))
-        self.traces['opened'].append((len(self.traces['opened']), True if value[0] == 'opened' else False))
-        self.traces['none'].append((len(self.traces['none']), True if value[1] == 'none' else False))
-        self.traces['close'].append((len(self.traces['close']), True if value[1] == 'close' else False))
-        self.traces['open'].append((len(self.traces['open']), True if value[1] == 'open' else False))
-        self.traces['power'].append((len(self.traces['power']), True if value[2] == '+' else False))
+        self.traces['p'].append((len(self.traces['p']), 1 if value[0] == '+' else 0))
+        self.traces['q'].append((len(self.traces['q']), 1 if value[0] == '+' else 0))
         return np.array(self.observation)
 
     def render(self):

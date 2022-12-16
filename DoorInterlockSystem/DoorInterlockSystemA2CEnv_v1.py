@@ -2,12 +2,12 @@ import numpy as np
 from gym.spaces import Discrete, Box
 import gym
 import pygame
-import mtl
+import stl
 
 class ActorCritic(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, render_mode=None, size=5):
+    def __init__(self, render_mode=None, size=5, sample_size=1000):
         super().__init__()
 
         self.size = size  # The size of the square grid
@@ -17,6 +17,8 @@ class ActorCritic(gym.Env):
                                   ['opened', 'none', '-'], ['opened', 'open', '-'], ['opened', 'close', '-'],
                                   ['partially', 'close', '-'], ['closed', 'none', '-'], ['closed', 'open', '-'],
                                   ['closed', 'close', '-']]
+        self.sample_size = sample_size
+        self.samples = np.random.randint(0, len(self.observation_value), self.sample_size).tolist()
         # p0, p1
         # closed, partially_open, open
         # for i in ['00', '01', '10']:
@@ -102,9 +104,7 @@ class ActorCritic(gym.Env):
 
         self.specification = '(' + self.env_specification + ' -> ' + self.sys_specification + ')'
 
-        # [p0, p1, q0, q1, r0]
         self.observation_space = Discrete(10)
-        # [s0, s1]
         self.action_space = Discrete(3)
         self.observation = 0
         self.action = 0
@@ -130,12 +130,12 @@ class ActorCritic(gym.Env):
 
             safety_eval = True
             if len(self.sys_properties[0]['property']) > 0:
-                phi = mtl.parse(self.sys_properties[0]['property'])
-                safety_eval = phi(self.traces, quantitative=False)
+                phi = stl.parse(self.sys_properties[0]['property'])
+                safety_eval = phi(self.traces, quantitative=self.sys_properties[0]['quantitative'])
             liveness_eval = True
             if len(self.sys_properties[1]['property']) > 0:
-                phi = mtl.parse(self.sys_properties[1]['property'])
-                liveness_eval = phi(self.traces, quantitative=False)
+                phi = stl.parse(self.sys_properties[1]['property'])
+                liveness_eval = phi(self.traces, quantitative=self.sys_properties[0]['quantitative'])
             if safety_eval and liveness_eval:
                 self.observation = obs
                 return True
@@ -166,32 +166,31 @@ class ActorCritic(gym.Env):
         self.traces['on'].append((len(self.traces['on']), True if value[0] == 'on' else False))
 
         obs = np.array(self.observation)
+
+        done = False
         info = {
             'satisfiable': False
         }
         reward = 0
         safety_eval = True
-        if len(self.sys_properties[0]['property']) > 0:
-            phi = mtl.parse(self.sys_properties[0]['property'])
-            safety_eval = phi(self.traces, quantitative=False)
+        if len(self.sys_properties[0]['property']) >= 0:
+            phi = stl.parse(self.sys_properties[0]['property'])
+            safety_eval = phi(self.traces, quantitative=self.sys_properties[0]['quantitative'])
         liveness_eval = True
         if len(self.sys_properties[1]['property']) > 0:
-            phi = mtl.parse(self.sys_properties[1]['property'])
-            liveness_eval = phi(self.traces, quantitative=False)
-        if safety_eval and liveness_eval:
+            phi = stl.parse(self.sys_properties[1]['property'])
+            liveness_eval = phi(self.traces, quantitative=self.sys_properties[0]['quantitative'])
+        if safety_eval:
+            reward += 1
+        if liveness_eval:
             reward += 10
+        if safety_eval and liveness_eval:
             done = True
             info['satisfiable'] = True
         elif safety_eval and not liveness_eval:
-            reward += 1
             done = False
             info['satisfiable'] = False
-        # elif not safety_eval and liveness_eval:
-        #     reward += -500
-        #     done = False
-        #     info['satisfiable'] = False
-        else:
-            reward += -10
+        elif not safety_eval:
             done = True
             info['satisfiable'] = False
         return obs, reward, done, info
@@ -213,7 +212,8 @@ class ActorCritic(gym.Env):
             'off': [],
             'on': []
         }
-        self.observation = self.observation_space.sample()
+        self.observation = self.samples.pop(0)
+        # self.observation = self.observation_space.sample()
         value = self.observation_value[self.observation]
         self.traces['closed'].append((len(self.traces['closed']), True if value[0] == 'closed' else False))
         self.traces['partially'].append((len(self.traces['partially']), True if value[0] == 'partially' else False))

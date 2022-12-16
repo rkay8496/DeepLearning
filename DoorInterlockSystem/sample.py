@@ -1,37 +1,13 @@
-env_properties = [
-    {
-        'category': 'safety',
-        'property': '(G((closed & none) -> Xclosed) & ' # door
-                    'G((opened & none) -> Xopened) & '
-                    'G((closed & open) -> Xpartially) & '
-                    'G((opened & close) -> Xpartially) & '
-                    'G((partially & open) -> Xopened) & '
-                    'G((partially & close) -> Xclosed) & '
-                    'G((closed & ~partially & ~opened) | (~closed & partially & ~opened) | '
-                    '(~closed & ~partially & opened)) & '
-                    'G(closed -> (Xopen | Xnone)) & ' # request
-                    'G(opened -> (Xclose | Xnone)) & '
-                    'G((open & X~opened) -> Xopen) & '
-                    'G((close & X~closed) -> Xclose) & '
-                    'G((none & ~close & ~open) | (~none & close & ~open) | (~none & ~close & open)) & '
-                    'G(off -> X~power) & '  # power
-                    'G(on -> Xpower) & '
-                    'G(nothing -> (Xpower <-> power)))',
-        'quantitative': False
-    },
-    {
-        'category': 'liveness',
-        'property': '',
-        'quantitative': False
-    },
-]
+import mtl
 
-env_specification = ''
-results = list(filter(lambda item: len(item['property']) > 0, env_properties))
-if len(results) > 0:
-    env_specification += '('
-    for x in results:
-        env_specification += x['property'] + ' & '
-    env_specification = env_specification[:-3]
-    env_specification += ')'
-print(env_specification)
+spec1 = mtl.parse("(G((p & ~r) -> Xp) & G((q & ~s) -> Xq) & G((p & r & X~r) -> X~p) & G((q & s & X~s) -> X~q))")
+spec2 = mtl.parse('(G(~(r & s)) & G((Fr -> p)) & G((Fs -> q)))')
+data = {'p': [(0, True), (1, True)], 'q': [(0, False), (1, False)], 'r': [(0, False), (1, True)], 's': [(0, False), (1, False)]}
+print(spec1)
+print(spec1(data, quantitative=False))
+print(spec2)
+print(spec2(data, quantitative=False))
+# print(True if spec2(data) > 0 else False)
+
+spec1 = mtl.parse("(((!p && !q) && G((p && !r) -> X(p)) && G((q && !s) -> X(q)) && G((p && r && X!r) -> X(!p)) && G((q && s && X(!s)) -> X(!q))) -> ((!r && !s) && G(!(r && s)) && G(F(p -> r)) && G(F(q -> s))))")
+spec2 = mtl.parse('(G(!(r && s)) && G(F(p -> r)) && G(F(q -> s)))')

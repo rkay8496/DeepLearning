@@ -1,12 +1,14 @@
+import pickle
+
 import numpy as np
 import tensorflow as tf
 import gym
 import tensorflow_probability as tfp
 import keras.losses as kls
 import matplotlib.pyplot as plt
-from DoorInterlockSystem.DoorInterlockSystemA2CEnv_v1 import ActorCritic
+from Arbiter.ArbiterA2CEnv_v1 import ActorCritic
 
-sample_size = 500
+sample_size = 10000
 env = ActorCritic(render_mode='human', sample_size=sample_size)
 state_size = env.observation_space.n
 action_size = env.action_space.n
@@ -47,8 +49,8 @@ class actor(tf.keras.Model):
 class agent():
     def __init__(self, gamma=0.99):
         self.gamma = gamma
-        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.001)
-        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.001)
+        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.00005)
+        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.00005)
         self.actor = actor()
         self.critic = critic()
 
@@ -127,7 +129,6 @@ def preprocess1(states, actions, rewards, gamma):
 
     return states, actions, discnt_rewards
 
-
 tf.random.set_seed(336699)
 agentoo7 = agent()
 episodes = sample_size
@@ -171,7 +172,10 @@ for epi in range(episodes):
             ep_reward.append(total_reward)
             avg_reward = np.mean(ep_reward[-100:])
             total_avgr.append(avg_reward)
-            print("total reward after {} episodes is {} and avg reward is {} and length is {}".format(epi, total_reward, avg_reward, step))
+            print("total reward after {} episodes is {} and avg reward is {} and length is {}".format(epi,
+                                                                                                      total_reward,
+                                                                                                      avg_reward,
+                                                                                                      step))
             states, actions, discnt_rewards = preprocess1(states, actions, rewards, 1)
             al, cl = agentoo7.learn(states, actions, discnt_rewards)
             states = states.tolist()
@@ -197,9 +201,10 @@ for epi in range(episodes):
             break
 
 agentoo7.actor.model.save('./A2C.h5')
-
 model = tf.keras.models.load_model('./A2C.h5')
 print(model.predict(list(range(env.observation_space.n))))
+
+
 
 # ep = [i for i in range(len(total_avgr))]
 # plt.plot(ep, total_avgr, 'b')
@@ -208,7 +213,7 @@ print(model.predict(list(range(env.observation_space.n))))
 # plt.ylabel("average reward per 100 episodes")
 # plt.grid(True)
 # plt.show()
-#
+
 # env = ActorCritic(render_mode='human')
 # ep_reward = []
 # total_avgr = []
