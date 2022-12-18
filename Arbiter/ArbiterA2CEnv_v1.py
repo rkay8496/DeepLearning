@@ -39,7 +39,7 @@ class ActorCritic(gym.Env):
             {
 
                 'category': 'safety',
-                'property': '(G((p & ~r) -> Xp) & '  # door
+                'property': '(G((p & ~r) -> Xp) & ' 
                             'G((q & ~s) -> Xq) & '
                             'G((p & r & X~r) -> X~p) & '
                             'G((q & s & X~s) -> X~q))',
@@ -69,8 +69,8 @@ class ActorCritic(gym.Env):
             },
             {
                 'category': 'liveness',
-                'property': '(G((p -> Fr)) & '
-                            'G((p -> Fs)))',
+                'property': '(G(p -> Fr) & '
+                            'G(q -> Fs))',
                 'quantitative': False
             },
         ]
@@ -103,7 +103,7 @@ class ActorCritic(gym.Env):
             obs = self.observation_space.sample()
             value = self.observation_value[obs]
             self.traces['p'].append((len(self.traces['p']), True if value[0] == '+' else False))
-            self.traces['q'].append((len(self.traces['q']), True if value[0] == '+' else False))
+            self.traces['q'].append((len(self.traces['q']), True if value[1] == '+' else False))
 
             safety_eval = True
             if len(self.env_properties[0]['property']) > 0:
@@ -112,7 +112,7 @@ class ActorCritic(gym.Env):
             liveness_eval = True
             if len(self.env_properties[1]['property']) > 0:
                 phi = stl.parse(self.env_properties[1]['property'])
-                liveness_eval = phi(self.traces, quantitative=self.env_properties[0]['quantitative'])
+                liveness_eval = phi(self.traces, quantitative=self.env_properties[1]['quantitative'])
             if safety_eval and liveness_eval:
                 self.observation = obs
                 return True
@@ -134,7 +134,7 @@ class ActorCritic(gym.Env):
         self.action = action
         value = self.action_value[self.action]
         self.traces['r'].append((len(self.traces['r']), True if value[0] == '+' else False))
-        self.traces['s'].append((len(self.traces['s']), True if value[0] == '+' else False))
+        self.traces['s'].append((len(self.traces['s']), True if value[1] == '+' else False))
 
         obs = np.array(self.observation)
 
@@ -150,10 +150,10 @@ class ActorCritic(gym.Env):
         liveness_eval = True
         if len(self.sys_properties[1]['property']) > 0:
             phi = stl.parse(self.sys_properties[1]['property'])
-            liveness_eval = phi(self.traces, quantitative=self.sys_properties[0]['quantitative'])
+            liveness_eval = phi(self.traces, quantitative=self.sys_properties[1]['quantitative'])
         if safety_eval and liveness_eval:
             reward += 10
-            done = False
+            done = True
             info['satisfiable'] = True
         elif safety_eval and not liveness_eval:
             reward += 1
@@ -177,7 +177,7 @@ class ActorCritic(gym.Env):
         self.observation = self.observation_space.sample()
         value = self.observation_value[self.observation]
         self.traces['p'].append((len(self.traces['p']), True if value[0] == '+' else False))
-        self.traces['q'].append((len(self.traces['q']), True if value[0] == '+' else False))
+        self.traces['q'].append((len(self.traces['q']), True if value[1] == '+' else False))
         return np.array(self.observation)
 
     def render(self):
