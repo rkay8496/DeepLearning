@@ -1,0 +1,31 @@
+MODULE main
+VAR
+    p : boolean;
+    q : boolean;
+    r : boolean;
+    s : boolean;
+DEFINE
+    s0 := !p & q & r & !s;
+    s1 := !p & q & r & !s;
+    s2 := !p & q & r & !s;
+    s3 := p & q & r & !s;
+    s4 := !p & q & r & !s;
+    s5 := p & q & r & !s;
+    s6 := !p & q & r & !s;
+    s7 := !p & q & r & !s;
+    s8 := !p & q & r & !s;
+INIT
+    s0;
+TRANS
+    (s0 -> next(s1)) &
+    (s1 -> next(s2)) &
+    (s2 -> next(s3)) &
+    (s3 -> next(s4)) &
+    (s4 -> next(s5)) &
+    (s5 -> next(s6)) &
+    (s6 -> next(s7)) &
+    (s7 -> next(s8));
+
+--LTLSPEC G!(r & s);
+--LTLSPEC G(p -> F(r));
+LTLSPEC G(q -> F(s));

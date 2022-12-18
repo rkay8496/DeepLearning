@@ -206,7 +206,7 @@ plt.grid(True)
 # plt.show()
 plt.savefig('./solved_train.png')
 
-f = open('counter_examples.txt', 'w')
+f = open('counter_examples.json', 'w')
 episodes = 100
 iterations = 10
 ep_reward = []
