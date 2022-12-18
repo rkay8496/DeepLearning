@@ -7,7 +7,7 @@ import stl
 class ActorCritic(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, render_mode=None, size=5, sample_size=1000):
+    def __init__(self, render_mode=None, size=5):
         super().__init__()
 
         self.size = size  # The size of the square grid
@@ -17,8 +17,6 @@ class ActorCritic(gym.Env):
                                   ['opened', 'none', '-'], ['opened', 'open', '-'], ['opened', 'close', '-'],
                                   ['partially', 'close', '-'], ['closed', 'none', '-'], ['closed', 'open', '-'],
                                   ['closed', 'close', '-']]
-        self.sample_size = sample_size
-        self.samples = np.random.randint(0, len(self.observation_value), self.sample_size).tolist()
         # p0, p1
         # closed, partially_open, open
         # for i in ['00', '01', '10']:
@@ -129,13 +127,13 @@ class ActorCritic(gym.Env):
             self.traces['power'].append((len(self.traces['power']), True if value[2] == '+' else False))
 
             safety_eval = True
-            if len(self.sys_properties[0]['property']) > 0:
-                phi = stl.parse(self.sys_properties[0]['property'])
-                safety_eval = phi(self.traces, quantitative=self.sys_properties[0]['quantitative'])
+            if len(self.env_properties[0]['property']) > 0:
+                phi = stl.parse(self.env_properties[0]['property'])
+                safety_eval = phi(self.traces, quantitative=self.env_properties[0]['quantitative'])
             liveness_eval = True
-            if len(self.sys_properties[1]['property']) > 0:
-                phi = stl.parse(self.sys_properties[1]['property'])
-                liveness_eval = phi(self.traces, quantitative=self.sys_properties[0]['quantitative'])
+            if len(self.env_properties[1]['property']) > 0:
+                phi = stl.parse(self.env_properties[1]['property'])
+                liveness_eval = phi(self.traces, quantitative=self.env_properties[1]['quantitative'])
             if safety_eval and liveness_eval:
                 self.observation = obs
                 return True
@@ -179,18 +177,19 @@ class ActorCritic(gym.Env):
         liveness_eval = True
         if len(self.sys_properties[1]['property']) > 0:
             phi = stl.parse(self.sys_properties[1]['property'])
-            liveness_eval = phi(self.traces, quantitative=self.sys_properties[0]['quantitative'])
-        if safety_eval:
-            reward += 1
-        if liveness_eval:
-            reward += 10
+            liveness_eval = phi(self.traces, quantitative=self.sys_properties[1]['quantitative'])
         if safety_eval and liveness_eval:
+            reward += 10
             done = True
             info['satisfiable'] = True
         elif safety_eval and not liveness_eval:
+            reward += 1
             done = False
             info['satisfiable'] = False
-        elif not safety_eval:
+        elif not safety_eval and liveness_eval:
+            done = True
+            info['satisfiable'] = False
+        elif not safety_eval and not liveness_eval:
             done = True
             info['satisfiable'] = False
         return obs, reward, done, info
@@ -212,8 +211,7 @@ class ActorCritic(gym.Env):
             'off': [],
             'on': []
         }
-        self.observation = self.samples.pop(0)
-        # self.observation = self.observation_space.sample()
+        self.observation = self.observation_space.sample()
         value = self.observation_value[self.observation]
         self.traces['closed'].append((len(self.traces['closed']), True if value[0] == 'closed' else False))
         self.traces['partially'].append((len(self.traces['partially']), True if value[0] == 'partially' else False))
