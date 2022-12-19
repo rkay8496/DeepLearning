@@ -130,7 +130,7 @@ def preprocess1(states, actions, rewards, gamma):
 
 tf.random.set_seed(336699)
 agentoo7 = agent()
-episodes = 1000
+episodes = 200
 iterations = 10
 ep_reward = []
 total_avgr = []
@@ -195,8 +195,8 @@ plt.title("avg reward Vs total steps")
 plt.xlabel("total steps")
 plt.ylabel("average reward")
 plt.grid(True)
+plt.savefig('./avg_reward_train.png')
 plt.show()
-# plt.savefig('./avg_reward_train.png')
 
 ep = [i for i in range(len(total_solved))]
 plt.plot(ep, total_solved, 'b')
@@ -204,11 +204,11 @@ plt.title("solved Vs total steps")
 plt.xlabel("total steps")
 plt.ylabel("solved")
 plt.grid(True)
+plt.savefig('./solved_train.png')
 plt.show()
-# plt.savefig('./solved_train.png')
 
 f = open('counter_examples.json', 'w')
-episodes = 100
+episodes = 1000
 iterations = 10
 ep_reward = []
 total_avgr = []
@@ -269,8 +269,8 @@ plt.title("avg reward Vs total steps")
 plt.xlabel("total steps")
 plt.ylabel("average reward")
 plt.grid(True)
+plt.savefig('./avg_reward_test.png')
 plt.show()
-# plt.savefig('./avg_reward_test.png')
 
 ep = [i for i in range(len(total_solved))]
 plt.plot(ep, total_solved, 'b')
@@ -278,8 +278,8 @@ plt.title("solved Vs total steps")
 plt.xlabel("total steps")
 plt.ylabel("solved")
 plt.grid(True)
+plt.savefig('./solved_test.png')
 plt.show()
-# plt.savefig('./solved_test.png')
 
 f.close()
 

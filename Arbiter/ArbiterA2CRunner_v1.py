@@ -47,8 +47,8 @@ class actor(tf.keras.Model):
 class agent():
     def __init__(self, gamma=0.99):
         self.gamma = gamma
-        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.1)
-        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.1)
+        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.01)
+        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.01)
         self.actor = actor()
         self.critic = critic()
 
@@ -207,7 +207,7 @@ plt.grid(True)
 plt.savefig('./solved_train.png')
 
 f = open('counter_examples.json', 'w')
-episodes = 100
+episodes = 1000
 iterations = 10
 ep_reward = []
 total_avgr = []
