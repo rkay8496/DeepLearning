@@ -152,8 +152,8 @@ class ActorCritic(gym.Env):
             phi = stl.parse(self.sys_properties[1]['property'])
             liveness_eval = phi(self.traces, quantitative=self.sys_properties[1]['quantitative'])
         if safety_eval and liveness_eval:
-            reward += 10
-            done = True
+            reward += 1
+            done = False
             info['satisfiable'] = True
         elif safety_eval and not liveness_eval:
             reward += 1

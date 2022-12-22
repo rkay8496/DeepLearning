@@ -127,15 +127,17 @@ def preprocess1(states, actions, rewards, gamma):
 
     return states, actions, discnt_rewards
 
+
 tf.random.set_seed(336699)
 agentoo7 = agent()
-episodes = 1000
-iterations = 10
+steps = 100
 ep_reward = []
 total_avgr = []
-total_solved = []
-solved = 0
-for epi in range(episodes):
+for s in range(steps):
+
+    done = False
+    state = env.reset()
+    state = np.array([state])
     total_reward = 0
     all_aloss = []
     all_closs = []
@@ -143,12 +145,10 @@ for epi in range(episodes):
     states = []
     actions = []
 
-    state = env.reset()
-    state = np.array([state])
+    while not done:
 
-    for step in range(1, iterations):
         action = agentoo7.act(state)
-        next_state, reward, done, info = env.step(action)
+        next_state, reward, done, _ = env.step(action)
         rewards.append(reward)
         states.append(state)
         # actions.append(tf.one_hot(action, 2, dtype=tf.int32).numpy().tolist())
@@ -157,74 +157,65 @@ for epi in range(episodes):
         state = next_state
         total_reward += reward
 
-        ep_reward.append(total_reward)
-        avg_reward = np.mean(ep_reward[:])
-        total_avgr.append(avg_reward)
-        print("total reward after {} episodes is {} and avg reward is {}".format(epi, total_reward, avg_reward))
-        if done and info['satisfiable']:
-            solved += 1
-            total_solved.append(solved)
+        if done:
+            ep_reward.append(total_reward)
+            avg_reward = np.mean(ep_reward[-100:])
+            total_avgr.append(avg_reward)
+            print("total reward after {} steps is {} and avg reward is {}".format(s, total_reward, avg_reward))
             states, actions, discnt_rewards = preprocess1(states, actions, rewards, 1)
+
             al, cl = agentoo7.learn(states, actions, discnt_rewards)
-            states = states.tolist()
-            actions = actions.tolist()
             print(f"al{al}")
             print(f"cl{cl}")
-            break
-        elif not done and not info['satisfiable']:
-            if step == iterations - 1:
-                total_solved.append(solved)
-                break
-            pass
-        elif done and not info['satisfiable']:
-            total_solved.append(solved)
-            break
+        else:
+            computed = env.take_env()
+            if not computed:
+                ep_reward.append(total_reward)
+                avg_reward = np.mean(ep_reward[-100:])
+                total_avgr.append(avg_reward)
+                print("total reward after {} steps is {} and avg reward is {}".format(s, total_reward, avg_reward))
+                states, actions, discnt_rewards = preprocess1(states, actions, rewards, 1)
 
-        computed = env.take_env()
-        if not computed:
-            break
+                al, cl = agentoo7.learn(states, actions, discnt_rewards)
+                print(f"al{al}")
+                print(f"cl{cl}")
+                break
+
 
 agentoo7.actor.model.save('./A2C.h5')
 model = tf.keras.models.load_model('./A2C.h5')
 print(model.predict(list(range(env.observation_space.n))))
 
-ep = [i for i in range(len(total_avgr))]
+ep = [i for i in range(steps)]
 plt.plot(ep, total_avgr, 'b')
-plt.title("avg reward Vs total steps")
-plt.xlabel("total steps")
-plt.ylabel("average reward")
+plt.title("avg reward Vs episodes")
+plt.xlabel("episodes")
+plt.ylabel("average reward per 100 episodes")
 plt.grid(True)
-# plt.show()
 plt.savefig('./avg_reward_train.png')
+plt.show()
 
-ep = [i for i in range(len(total_solved))]
-plt.plot(ep, total_solved, 'b')
-plt.title("solved Vs total steps")
-plt.xlabel("total steps")
-plt.ylabel("solved")
-plt.grid(True)
-# plt.show()
-plt.savefig('./solved_train.png')
-
-f = open('counter_examples.json', 'w')
-episodes = 1000
-iterations = 10
+f = open('./traces.json', 'w')
+agentoo7 = agent()
+steps = 100
 ep_reward = []
 total_avgr = []
-total_solved = []
-solved = 0
-for epi in range(episodes):
+for s in range(steps):
+
+    done = False
+    state = env.reset()
+    state = np.array([state])
     total_reward = 0
+    all_aloss = []
+    all_closs = []
     rewards = []
     states = []
     actions = []
 
-    state = env.reset()
-    state = np.array([state])
+    while not done:
 
-    for step in range(1, iterations):
         action = agentoo7.act(state)
-        next_state, reward, done, info = env.step(action)
+        next_state, reward, done, _ = env.step(action)
         rewards.append(reward)
         states.append(state)
         # actions.append(tf.one_hot(action, 2, dtype=tf.int32).numpy().tolist())
@@ -233,51 +224,33 @@ for epi in range(episodes):
         state = next_state
         total_reward += reward
 
-        ep_reward.append(total_reward)
-        avg_reward = np.mean(ep_reward[:])
-        total_avgr.append(avg_reward)
-        print("total reward after {} episodes is {} and avg reward is {}".format(epi, total_reward, avg_reward))
-        if done and info['satisfiable']:
-            solved += 1
-            total_solved.append(solved)
-            # f.write('Solved::' + json.dumps(env.traces) + '\n')
-            break
-        elif not done and not info['satisfiable']:
-            if step == iterations - 1:
-                total_solved.append(solved)
-                f.write('Not Solved::' + json.dumps(env.traces) + '\n')
+        if done:
+            ep_reward.append(total_reward)
+            avg_reward = np.mean(ep_reward[-100:])
+            total_avgr.append(avg_reward)
+            print("total reward after {} steps is {} and avg reward is {}".format(s, total_reward, avg_reward))
+            f.write(json.dumps(env.traces) + '\n')
+        else:
+            computed = env.take_env()
+            if not computed:
+                ep_reward.append(total_reward)
+                avg_reward = np.mean(ep_reward[-100:])
+                total_avgr.append(avg_reward)
+                print("total reward after {} steps is {} and avg reward is {}".format(s, total_reward, avg_reward))
+                f.write(json.dumps(env.traces) + '\n')
                 break
-            pass
-        elif done and not info['satisfiable']:
-            total_solved.append(solved)
-            f.write('Not Solved::' + json.dumps(env.traces) + '\n')
-            break
-
-        computed = env.take_env()
-        if not computed:
-            # f.write('Not Computed::' + json.dumps(env.traces) + '\n')
-            break
 
 agentoo7.actor.model.save('./A2C.h5')
 model = tf.keras.models.load_model('./A2C.h5')
 print(model.predict(list(range(env.observation_space.n))))
 
-ep = [i for i in range(len(total_avgr))]
+ep = [i for i in range(steps)]
 plt.plot(ep, total_avgr, 'b')
-plt.title("avg reward Vs total steps")
-plt.xlabel("total steps")
-plt.ylabel("average reward")
+plt.title("avg reward Vs episodes")
+plt.xlabel("episodes")
+plt.ylabel("average reward per 100 episodes")
 plt.grid(True)
-# plt.show()
 plt.savefig('./avg_reward_test.png')
-
-ep = [i for i in range(len(total_solved))]
-plt.plot(ep, total_solved, 'b')
-plt.title("solved Vs total steps")
-plt.xlabel("total steps")
-plt.ylabel("solved")
-plt.grid(True)
-# plt.show()
-plt.savefig('./solved_test.png')
+plt.show()
 
 f.close()
