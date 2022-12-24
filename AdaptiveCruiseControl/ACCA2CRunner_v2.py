@@ -4,7 +4,7 @@ import gym
 import tensorflow_probability as tfp
 import keras.losses as kls
 import matplotlib.pyplot as plt
-from AdaptiveCruiseControl.ACCA2CEnv_v1 import ActorCritic
+from AdaptiveCruiseControl.ACCA2CEnv_v2 import ActorCritic
 import json
 
 env = ActorCritic(render_mode='human')
