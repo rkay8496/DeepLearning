@@ -39,16 +39,15 @@ class ActorCritic(gym.Env):
         self.sys_properties = [
             {
                 'category': 'safety',
-                'property': '(G({distance > 70} -> F[1, 1]{speed * 1.2 < 70}) & '
-                            'G(({distance < 71} & {distance > 50}) -> F[1, 1]{speed * 1.1 < 70}) & '
-                            'G(({distance < 51} & {distance > 30}) -> F[1, 1]({speed * 0.8 > 0} & {speed * 0.8 < 70})) & '
-                            'G(({distance < 31} & {distance > 10}) -> F[1, 1]({speed * 0.6 > 0} & {speed * 0.8 < 70})) & '
-                            'G({distance < 11} -> F[1, 1]({speed * 0.3 > 0} & {speed * 0.8 < 70})))',
+                'property': '(G({distance > 10} -> F[0, 0]{action < 1}))',
                 'quantitative': True
             },
             {
                 'category': 'liveness',
-                'property': '',
+                'property': '(G(({speed < 100} & {distance > 50}) -> F[0, 2]{action > 1}) & '
+                            'G(({speed < 100} & {distance < 50}) -> F[0, 2]({action < 2} & {action > 0})) & '
+                            'G(({speed > 100} & {distance > 50}) -> F[0, 2]({action < 2} & {action > 0})) & '
+                            'G(({speed > 100} & {distance < 50}) -> F[0, 2]({action < 2} & {action > 0})))',
                 'quantitative': True
             },
         ]
@@ -64,11 +63,11 @@ class ActorCritic(gym.Env):
 
         self.specification = '(' + self.env_specification + ' -> ' + self.sys_specification + ')'
 
-        # distance
-        self.observation_space = Box(low=np.array([0.0]), high=np.array([100.0]), dtype=np.float32)
-        # speed
-        self.action_space = Box(low=np.array([0.0]), high=np.array([100.0]), dtype=np.float32)
-        self.observation = 0.0
+        # speed, distance
+        self.observation_space = Box(low=np.array([0.0, 0.0]), high=np.array([100.0, 200.0]), dtype=np.float32)
+        # fully stop, deceleration, acceleration
+        self.action_space = Discrete(3)
+        self.observation = [0.0, 0.0]
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -80,7 +79,8 @@ class ActorCritic(gym.Env):
     def take_env(self):
         def compute_observation():
             obs = self.observation_space.sample()
-            self.traces['distance'].append((len(self.traces['distance']), obs[0]))
+            self.traces['speed'].append((len(self.traces['speed']), obs[0]))
+            self.traces['distance'].append((len(self.traces['distance']), obs[1]))
 
             safety_eval = True
             if len(self.env_properties[0]['property']) > 0:
@@ -108,7 +108,7 @@ class ActorCritic(gym.Env):
 
     def step(self, action):
         self.action = action
-        self.traces['speed'].append((len(self.traces['speed']), self.action))
+        self.traces['action'].append((len(self.traces['action']), self.action))
 
         obs = np.array(self.observation)
 
@@ -145,12 +145,14 @@ class ActorCritic(gym.Env):
 
     def reset(self):
         self.traces = {
+            'speed': [],
             'distance': [],
-            'speed': []
+            'action': []
         }
 
         self.observation = self.observation_space.sample()
-        self.traces['distance'].append((len(self.traces['distance']), self.observation[0]))
+        self.traces['speed'].append((len(self.traces['speed']), self.observation[0]))
+        self.traces['distance'].append((len(self.traces['distance']), self.observation[1]))
         return np.array(self.observation)
 
     def render(self):
