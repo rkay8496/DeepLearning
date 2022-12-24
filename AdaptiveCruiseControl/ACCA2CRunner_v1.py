@@ -4,17 +4,17 @@ import gym
 import tensorflow_probability as tfp
 import keras.losses as kls
 import matplotlib.pyplot as plt
-from Arbiter.ArbiterA2CEnv_v1 import ActorCritic
+from AdaptiveCruiseControl.ACCA2CEnv_v1 import ActorCritic
 import json
 
 env = ActorCritic(render_mode='human')
-state_size = env.observation_space.n
-action_size = env.action_space.n
+# state_size = env.observation_space.n
+# action_size = env.action_space.n
 
 class critic(tf.keras.Model):
     def __init__(self):
         super().__init__()
-        self.d1 = tf.keras.layers.Dense(state_size, activation='relu')
+        self.d1 = tf.keras.layers.Dense(128, activation='relu')
         # self.d2 = tf.keras.layers.Dense(1536, activation='relu')
         self.v = tf.keras.layers.Dense(1, activation=None)
 
@@ -28,9 +28,9 @@ class critic(tf.keras.Model):
 class actor(tf.keras.Model):
     def __init__(self):
         super().__init__()
-        self.d1 = tf.keras.layers.Dense(state_size, input_shape=(1,), activation='relu')
+        self.d1 = tf.keras.layers.Dense(128, input_shape=(1,), activation='relu')
         # self.d2 = tf.keras.layers.Dense(1536, activation='relu')
-        self.a = tf.keras.layers.Dense(action_size, activation='softmax')
+        self.a = tf.keras.layers.Dense(128, activation='softmax')
         self.model = tf.keras.models.Sequential([
             self.d1,
             # self.d2,
@@ -47,8 +47,8 @@ class actor(tf.keras.Model):
 class agent():
     def __init__(self, gamma=0.99):
         self.gamma = gamma
-        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.01)
-        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.01)
+        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.001)
+        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.001)
         self.actor = actor()
         self.critic = critic()
 
@@ -130,7 +130,7 @@ def preprocess1(states, actions, rewards, gamma):
 
 tf.random.set_seed(336699)
 agentoo7 = agent()
-steps = 200
+steps = 100
 ep_reward = []
 total_avgr = []
 for s in range(steps):
@@ -183,8 +183,8 @@ for s in range(steps):
 
 
 agentoo7.actor.model.save('./A2C.h5')
-model = tf.keras.models.load_model('./A2C.h5')
-print(model.predict(list(range(env.observation_space.n))))
+# model = tf.keras.models.load_model('./A2C.h5')
+# print(model.predict(list(range(env.observation_space.n))))
 
 ep = [i for i in range(steps)]
 plt.plot(ep, total_avgr, 'b')
@@ -229,7 +229,7 @@ for s in range(steps):
             avg_reward = np.mean(ep_reward[-100:])
             total_avgr.append(avg_reward)
             print("total reward after {} steps is {} and avg reward is {}".format(s, total_reward, avg_reward))
-            f.write(json.dumps(env.traces) + '\n')
+            f.write(str(env.traces) + '\n')
         else:
             computed = env.take_env()
             if not computed:
@@ -237,7 +237,7 @@ for s in range(steps):
                 avg_reward = np.mean(ep_reward[-100:])
                 total_avgr.append(avg_reward)
                 print("total reward after {} steps is {} and avg reward is {}".format(s, total_reward, avg_reward))
-                f.write(json.dumps(env.traces) + '\n')
+                f.write(str(env.traces) + '\n')
                 break
 
 ep = [i for i in range(steps)]
