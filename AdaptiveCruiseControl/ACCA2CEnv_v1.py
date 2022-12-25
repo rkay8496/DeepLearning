@@ -39,7 +39,7 @@ class ActorCritic(gym.Env):
         self.sys_properties = [
             {
                 'category': 'safety',
-                'property': '(G({distance > 10} -> F[0, 0]{action < 1}))',
+                'property': '(G({distance < 10} -> F[0, 0]{action < 1}))',
                 'quantitative': True
             },
             {
@@ -125,9 +125,9 @@ class ActorCritic(gym.Env):
         if len(self.sys_properties[1]['property']) > 0:
             phi = stl.parse(self.sys_properties[1]['property'])
             liveness_eval = True if phi(self.traces, quantitative=self.sys_properties[1]['quantitative']) > 0 else False
-        if safety_eval:
+        if safety_eval and len(self.sys_properties[0]['property']) > 0:
             reward += 1
-        if liveness_eval:
+        if liveness_eval and len(self.sys_properties[1]['property']) > 0:
             reward += 10
         if safety_eval and liveness_eval:
             done = False

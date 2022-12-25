@@ -9,12 +9,12 @@ import json
 
 env = ActorCritic(render_mode='human')
 # state_size = env.observation_space.n
-# action_size = env.action_space.n
+action_size = env.action_space.n
 
 class critic(tf.keras.Model):
     def __init__(self):
         super().__init__()
-        self.d1 = tf.keras.layers.Dense(128, activation='relu')
+        self.d1 = tf.keras.layers.Dense(256, activation='relu')
         # self.d2 = tf.keras.layers.Dense(1536, activation='relu')
         self.v = tf.keras.layers.Dense(1, activation=None)
 
@@ -28,9 +28,9 @@ class critic(tf.keras.Model):
 class actor(tf.keras.Model):
     def __init__(self):
         super().__init__()
-        self.d1 = tf.keras.layers.Dense(128, input_shape=(2,), activation='relu')
+        self.d1 = tf.keras.layers.Dense(256, input_shape=(2,), activation='relu')
         # self.d2 = tf.keras.layers.Dense(1536, activation='relu')
-        self.a = tf.keras.layers.Dense(128, activation='softmax')
+        self.a = tf.keras.layers.Dense(action_size, activation='softmax')
         self.model = tf.keras.models.Sequential([
             self.d1,
             # self.d2,
@@ -144,11 +144,13 @@ for s in range(steps):
     rewards = []
     states = []
     actions = []
+    cnt = 0
 
     while not done:
 
         action = agentoo7.act(state)
         next_state, reward, done, _ = env.step(action)
+        print(reward)
         rewards.append(reward)
         states.append(state)
         # actions.append(tf.one_hot(action, 2, dtype=tf.int32).numpy().tolist())
@@ -156,6 +158,7 @@ for s in range(steps):
         next_state = np.array([next_state])
         state = next_state
         total_reward += reward
+        cnt += 1
 
         if done:
             ep_reward.append(total_reward)
@@ -167,6 +170,7 @@ for s in range(steps):
             al, cl = agentoo7.learn(states, actions, discnt_rewards)
             print(f"al{al}")
             print(f"cl{cl}")
+            break
         else:
             computed = env.take_env()
             if not computed:
@@ -180,13 +184,23 @@ for s in range(steps):
                 print(f"al{al}")
                 print(f"cl{cl}")
                 break
+        if cnt == 10:
+            ep_reward.append(total_reward)
+            avg_reward = np.mean(ep_reward[-100:])
+            total_avgr.append(avg_reward)
+            print("total reward after {} steps is {} and avg reward is {}".format(s, total_reward, avg_reward))
+            states, actions, discnt_rewards = preprocess1(states, actions, rewards, 1)
 
+            al, cl = agentoo7.learn(states, actions, discnt_rewards)
+            print(f"al{al}")
+            print(f"cl{cl}")
+            break
 
 agentoo7.actor.model.save('./A2C.h5')
 # model = tf.keras.models.load_model('./A2C.h5')
 # print(model.predict(list(range(env.observation_space.n))))
 
-ep = [i for i in range(steps)]
+ep = [i for i in range(len(total_avgr))]
 plt.plot(ep, total_avgr, 'b')
 plt.title("avg reward Vs episodes")
 plt.xlabel("episodes")
@@ -211,6 +225,7 @@ for s in range(steps):
     rewards = []
     states = []
     actions = []
+    cnt = 0
 
     while not done:
 
@@ -223,6 +238,7 @@ for s in range(steps):
         next_state = np.array([next_state])
         state = next_state
         total_reward += reward
+        cnt += 1
 
         if done:
             ep_reward.append(total_reward)
@@ -230,6 +246,7 @@ for s in range(steps):
             total_avgr.append(avg_reward)
             print("total reward after {} steps is {} and avg reward is {}".format(s, total_reward, avg_reward))
             f.write(str(env.traces) + '\n')
+            break
         else:
             computed = env.take_env()
             if not computed:
@@ -239,8 +256,15 @@ for s in range(steps):
                 print("total reward after {} steps is {} and avg reward is {}".format(s, total_reward, avg_reward))
                 f.write(str(env.traces) + '\n')
                 break
+        if cnt == 10:
+            ep_reward.append(total_reward)
+            avg_reward = np.mean(ep_reward[-100:])
+            total_avgr.append(avg_reward)
+            print("total reward after {} steps is {} and avg reward is {}".format(s, total_reward, avg_reward))
+            f.write(str(env.traces) + '\n')
+            break
 
-ep = [i for i in range(steps)]
+ep = [i for i in range(len(total_avgr))]
 plt.plot(ep, total_avgr, 'b')
 plt.title("avg reward Vs episodes")
 plt.xlabel("episodes")
