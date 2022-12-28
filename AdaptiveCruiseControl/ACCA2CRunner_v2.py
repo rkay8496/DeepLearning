@@ -4,8 +4,7 @@ import gym
 import tensorflow_probability as tfp
 import keras.losses as kls
 import matplotlib.pyplot as plt
-from AdaptiveCruiseControl.ACCA2CEnv_v1 import ActorCritic
-import json
+from AdaptiveCruiseControl.ACCA2CEnv_v2 import ActorCritic
 
 env = ActorCritic(render_mode='human')
 # state_size = env.observation_space.n
@@ -47,8 +46,8 @@ class actor(tf.keras.Model):
 class agent():
     def __init__(self, gamma=0.99):
         self.gamma = gamma
-        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.0001)
-        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.0001)
+        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.001)
+        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.001)
         self.actor = actor()
         self.critic = critic()
 
@@ -130,7 +129,7 @@ def preprocess1(states, actions, rewards, gamma):
 
 tf.random.set_seed(336699)
 agentoo7 = agent()
-steps = 10000
+steps = 300
 ep_reward = []
 total_avgr = []
 for s in range(steps):
@@ -182,8 +181,8 @@ for s in range(steps):
             print(f"cl{cl}")
 
 agentoo7.actor.model.save('./A2C.h5')
-model = tf.keras.models.load_model('./A2C.h5')
-print(model.predict(list(range(env.observation_space.n))))
+# model = tf.keras.models.load_model('./A2C.h5')
+# print(model.predict(list(range(env.observation_space.n))))
 
 ep = [i for i in range(len(total_avgr))]
 plt.plot(ep, total_avgr, 'b')
@@ -246,7 +245,7 @@ for s in range(steps):
             ep_length.append(len(env.traces[list(env.traces.keys())[0]]))
             total_length.append(np.mean(ep_length[:]))
             print("total reward after {} steps is {} and avg reward is {}".format(s, total_reward, avg_reward))
-            f.write(json.dumps(env.traces) + '\n')
+            f.write(str(env.traces) + '\n')
 
 ep = [i for i in range(len(total_avgr))]
 plt.plot(ep, total_avgr, 'b')

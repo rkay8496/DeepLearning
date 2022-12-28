@@ -94,7 +94,6 @@ class ActorCritic(gym.Env):
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
 
-        self.action = None
         self.window = None
         self.clock = None
 
@@ -154,7 +153,7 @@ class ActorCritic(gym.Env):
         if safety_eval:
             reward += 1
         if liveness_eval:
-            reward += 10
+            reward *= 2
         if safety_eval and liveness_eval:
             done = False
             info['satisfiable'] = True
@@ -171,15 +170,15 @@ class ActorCritic(gym.Env):
 
     def reset(self):
         self.traces = {
-            'p': [],
-            'q': [],
-            'r': [],
-            's': [],
+            'p': [(0, False)],
+            'q': [(0, False)],
+            'r': [(0, False)],
+            's': [(0, False)],
         }
-        self.observation = self.observation_space.sample()
-        value = self.observation_value[self.observation]
-        self.traces['p'].append((len(self.traces['p']), True if value[0] == '+' else False))
-        self.traces['q'].append((len(self.traces['q']), True if value[1] == '+' else False))
+        # self.observation = self.observation_space.sample()
+        # value = self.observation_value[self.observation]
+        # self.traces['p'].append((len(self.traces['p']), True if value[0] == '+' else False))
+        # self.traces['q'].append((len(self.traces['q']), True if value[1] == '+' else False))
         return np.array(self.observation)
 
     def render(self):

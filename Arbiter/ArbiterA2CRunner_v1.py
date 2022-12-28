@@ -47,8 +47,8 @@ class actor(tf.keras.Model):
 class agent():
     def __init__(self, gamma=0.99):
         self.gamma = gamma
-        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.01)
-        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.01)
+        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.1)
+        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.1)
         self.actor = actor()
         self.critic = critic()
 
@@ -130,23 +130,35 @@ def preprocess1(states, actions, rewards, gamma):
 
 tf.random.set_seed(336699)
 agentoo7 = agent()
-steps = 200
+steps = 500
 ep_reward = []
 total_avgr = []
 for s in range(steps):
 
     done = False
-    state = env.reset()
-    state = np.array([state])
     total_reward = 0
     all_aloss = []
     all_closs = []
     rewards = []
     states = []
     actions = []
+    cnt = 0
 
-    while not done:
+    state = env.reset()
+    state = np.array([state])
+    states.append(state)
+    actions.append(env.action)
+    rewards.append(0)
+    total_reward += 0
 
+    while not done and cnt < 50:
+
+        computed = env.take_env()
+        if not computed:
+            break
+
+        cnt += 1
+        state = np.array([env.observation])
         action = agentoo7.act(state)
         next_state, reward, done, _ = env.step(action)
         rewards.append(reward)
@@ -157,36 +169,25 @@ for s in range(steps):
         state = next_state
         total_reward += reward
 
-        if done:
+        if done and total_reward > 0:
+            total_reward -= reward
+            rewards.pop()
+            states.pop()
+            actions.pop()
             ep_reward.append(total_reward)
-            avg_reward = np.mean(ep_reward[-100:])
+            avg_reward = np.mean(ep_reward[:])
             total_avgr.append(avg_reward)
             print("total reward after {} steps is {} and avg reward is {}".format(s, total_reward, avg_reward))
             states, actions, discnt_rewards = preprocess1(states, actions, rewards, 1)
-
             al, cl = agentoo7.learn(states, actions, discnt_rewards)
             print(f"al{al}")
             print(f"cl{cl}")
-        else:
-            computed = env.take_env()
-            if not computed:
-                ep_reward.append(total_reward)
-                avg_reward = np.mean(ep_reward[-100:])
-                total_avgr.append(avg_reward)
-                print("total reward after {} steps is {} and avg reward is {}".format(s, total_reward, avg_reward))
-                states, actions, discnt_rewards = preprocess1(states, actions, rewards, 1)
-
-                al, cl = agentoo7.learn(states, actions, discnt_rewards)
-                print(f"al{al}")
-                print(f"cl{cl}")
-                break
-
 
 agentoo7.actor.model.save('./A2C.h5')
 model = tf.keras.models.load_model('./A2C.h5')
 print(model.predict(list(range(env.observation_space.n))))
 
-ep = [i for i in range(steps)]
+ep = [i for i in range(len(total_avgr))]
 plt.plot(ep, total_avgr, 'b')
 plt.title("avg reward Vs episodes")
 plt.xlabel("episodes")
@@ -197,23 +198,37 @@ plt.show()
 
 f = open('./traces.json', 'w')
 agentoo7 = agent()
-steps = 100
+steps = 1000
 ep_reward = []
 total_avgr = []
+ep_length = []
+total_length = []
 for s in range(steps):
 
     done = False
-    state = env.reset()
-    state = np.array([state])
     total_reward = 0
     all_aloss = []
     all_closs = []
     rewards = []
     states = []
     actions = []
+    cnt = 0
 
-    while not done:
+    state = env.reset()
+    state = np.array([state])
+    states.append(state)
+    actions.append(env.action)
+    rewards.append(0)
+    total_reward += 0
 
+    while not done and cnt < 50:
+
+        computed = env.take_env()
+        if not computed:
+            break
+
+        cnt += 1
+        state = np.array([env.observation])
         action = agentoo7.act(state)
         next_state, reward, done, _ = env.step(action)
         rewards.append(reward)
@@ -224,29 +239,35 @@ for s in range(steps):
         state = next_state
         total_reward += reward
 
-        if done:
+        if done and total_reward > 0:
+            total_reward -= reward
+            rewards.pop()
+            states.pop()
+            actions.pop()
             ep_reward.append(total_reward)
-            avg_reward = np.mean(ep_reward[-100:])
+            avg_reward = np.mean(ep_reward[:])
             total_avgr.append(avg_reward)
+            ep_length.append(len(env.traces[list(env.traces.keys())[0]]))
+            total_length.append(np.mean(ep_length[:]))
             print("total reward after {} steps is {} and avg reward is {}".format(s, total_reward, avg_reward))
             f.write(json.dumps(env.traces) + '\n')
-        else:
-            computed = env.take_env()
-            if not computed:
-                ep_reward.append(total_reward)
-                avg_reward = np.mean(ep_reward[-100:])
-                total_avgr.append(avg_reward)
-                print("total reward after {} steps is {} and avg reward is {}".format(s, total_reward, avg_reward))
-                f.write(json.dumps(env.traces) + '\n')
-                break
 
-ep = [i for i in range(steps)]
+ep = [i for i in range(len(total_avgr))]
 plt.plot(ep, total_avgr, 'b')
 plt.title("avg reward Vs episodes")
 plt.xlabel("episodes")
 plt.ylabel("average reward per 100 episodes")
 plt.grid(True)
 plt.savefig('./avg_reward_test.png')
+plt.show()
+
+ep = [i for i in range(len(total_length))]
+plt.plot(ep, total_length, 'b')
+plt.title("avg trace length Vs episodes")
+plt.xlabel("episodes")
+plt.ylabel("avg trace length per 100 episodes")
+plt.grid(True)
+plt.savefig('./avg_trace_length_test.png')
 plt.show()
 
 f.close()

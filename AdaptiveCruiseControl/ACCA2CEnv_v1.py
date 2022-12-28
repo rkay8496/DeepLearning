@@ -1,5 +1,7 @@
+# STL 버전 진행중
+# 논리식을 풀지 못함
 import numpy as np
-from gym.spaces import Discrete, Box
+from gym.spaces import Discrete, Box, MultiDiscrete
 import gym
 import pygame
 import stl
@@ -39,15 +41,22 @@ class ActorCritic(gym.Env):
         self.sys_properties = [
             {
                 'category': 'safety',
-                'property': '(G({distance < 10} -> F[0, 0]{action < 1}))',
+                'property': '(G({speed > 20} -> F[1, 1]{action > 1}) & '
+                            'G(F[1, 1]({(distance / speed) < (0.5 + (distance / speed)**0.5 + 0.9)} & {(distance / speed) > 0} & {(distance / speed) < 0}) -> F[1, 1]({action > 0} & {action < 2})) & '
+                            'G(F[1, 1]({speed > 20} & {speed < 22} & {(distance / speed) > 0.9}) -> F[1, 1]({action > 2} & {action > 4})) & '
+                            'G(F[1, 1]({(distance / speed) > -0.9} & {(distance / speed) < 0.1}) -> F[1, 1]({action > 1} & {action < 3})) & '
+                            'G(F[1, 1]({speed < 20} & {(distance / speed) > 0.9}) -> F[1, 1]{action < 1}) & '
+                            'G(F[1, 1]({(distance / speed) > (0.5 + (distance / speed)**0.5 + 0.9)} & {speed > 20} & {speed < 22}) -> F[1, 1]({action > 2} & {action < 4})) & '
+                            'G(F[1, 1]{(distance / speed) < (0.5 + (distance / speed)**0.5 + 0.9)} -> F[1, 1]({action > 0} & {action < 2})) & '
+                            'G(F[1, 1]({speed < 20} & {(distance / speed) > (0.5 + (distance / speed)**0.5 + 0.9)}) -> F[1, 1]{action < 1}) & '
+                            'G(F[1, 1]({(distance / speed) > (0.5 + (distance / speed)**0.5 + 0.9)} & {distance > 10}) -> F[1, 1]({action < 1})) & '
+                            'G(F[1, 1]({distance / speed < 0.91} & {distance < 10}) -> F[1, 1]({action > 1} & {action > 3})) & '
+                            'G(F[1, 1]({(distance / speed) > 0.9} | {distance > 10}) -> F[1, 1]({action < 1})))',
                 'quantitative': True
             },
             {
                 'category': 'liveness',
-                'property': '(G(({speed < 100} & {distance > 50}) -> F[0, 2]{action > 1}) & '
-                            'G(({speed < 100} & {distance < 50}) -> F[0, 2]({action < 2} & {action > 0})) & '
-                            'G(({speed > 100} & {distance > 50}) -> F[0, 2]({action < 2} & {action > 0})) & '
-                            'G(({speed > 100} & {distance < 50}) -> F[0, 2]({action < 2} & {action > 0})))',
+                'property': '',
                 'quantitative': True
             },
         ]
@@ -64,15 +73,16 @@ class ActorCritic(gym.Env):
         self.specification = '(' + self.env_specification + ' -> ' + self.sys_specification + ')'
 
         # speed, distance
-        self.observation_space = Box(low=np.array([0.0, 0.0]), high=np.array([100.0, 200.0]), dtype=np.float32)
-        # fully stop, deceleration, acceleration
-        self.action_space = Discrete(3)
-        self.observation = [0.0, 0.0]
+        self.observation_space = Box(low=np.array([0.0, 0.0]), high=np.array([40.0, 40.0]), dtype=np.float32)
+        # acc off, standby, resume, cruise, follow, stop
+        # accelerate, decelerate, fully stop, keep speed, unknown
+        self.action_space = Discrete(5)
+        self.observation = [1.0, 1.0]
+        self.action = 2
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
 
-        self.action = None
         self.window = None
         self.clock = None
 
@@ -94,6 +104,7 @@ class ActorCritic(gym.Env):
                 self.observation = obs
                 return True
             else:
+                self.traces['speed'].pop(len(self.traces['speed']) - 1)
                 self.traces['distance'].pop(len(self.traces['distance']) - 1)
                 return False
 
@@ -128,7 +139,7 @@ class ActorCritic(gym.Env):
         if safety_eval and len(self.sys_properties[0]['property']) > 0:
             reward += 1
         if liveness_eval and len(self.sys_properties[1]['property']) > 0:
-            reward += 10
+            reward *= 2
         if safety_eval and liveness_eval:
             done = False
             info['satisfiable'] = True
@@ -145,14 +156,11 @@ class ActorCritic(gym.Env):
 
     def reset(self):
         self.traces = {
-            'speed': [],
-            'distance': [],
-            'action': []
+            'speed': [(0, 1.0)],
+            'distance': [(0, 1.0)],
+            'action': [(0, 2)]
         }
 
-        self.observation = self.observation_space.sample()
-        self.traces['speed'].append((len(self.traces['speed']), self.observation[0]))
-        self.traces['distance'].append((len(self.traces['distance']), self.observation[1]))
         return np.array(self.observation)
 
     def render(self):

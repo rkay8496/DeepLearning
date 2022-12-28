@@ -1,50 +1,24 @@
-import pygame
+# 간단한 STL 버전
 import numpy as np
-from gym.spaces import Discrete, MultiBinary, MultiDiscrete, Dict
-import mtl
+from gym.spaces import Discrete, Box, MultiDiscrete
 import gym
+import pygame
 import stl
 
-class ArbiterEnv():
+class ActorCritic(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
     def __init__(self, render_mode=None, size=5):
         super().__init__()
 
         self.size = size  # The size of the square grid
-        self.window_size = 512  # The size of the PyGame window
-
-        self.observation_value = [['-', '-'], ['-', '+'], ['+', '-'], ['+', '+']]
-
-        # p0, p1
-        # closed, partially_open, open
-        # for i in ['00', '01', '10']:
-            # q0, q1
-            # nothing, close, open
-            # for j in ['00', '01', '10']:
-                    # r0
-                    # off, on
-                    # for k in ['0', '1']:
-                    #     value = []
-                    #     value.append(i[0])
-                    #     value.append(i[1])
-                    #     value.append(j[0])
-                    #     value.append(j[1])
-                    #     value.append(k)
-                    #     self.observation_value.append(value)
-
-        # s0, s1
-        # nothing, turn_off, turn_on
-        self.action_value = [['-', '-'], ['-', '+'], ['+', '-'], ['+', '+']]
+        self.window_size = 512 # The size of the PyGame window
 
         self.env_properties = [
             {
 
                 'category': 'safety',
-                'property': '(G((p & ~r) -> F[1, 1] p) & '  # door
-                            'G((q & ~s) -> F[1, 1] q) & '
-                            'G((p & r & F[1, 1] ~r) -> F[1, 1] ~p) & '
-                            'G((q & s & F[1, 1] ~s) -> F[1, 1] ~q))',
+                'property': '',
                 'quantitative': True
             },
             {
@@ -66,14 +40,15 @@ class ArbiterEnv():
         self.sys_properties = [
             {
                 'category': 'safety',
-                'property': '(G(~(r & s)) & '
-                            'G(F(p -> r)) & '
-                            'G(F(q -> s)))',
+                'property': '(G({distance < 10} -> F[0, 0]({action > 1} & {action < 3})))',
                 'quantitative': True
             },
             {
                 'category': 'liveness',
-                'property': '',
+                'property': '(G(({speed < 20} & {distance < 20}) -> F[1, 3]({action > 0} & {action < 2})) & '
+                            'G(({speed < 20} & {distance > 20}) -> F[1, 3]{action < 1}) & '
+                            'G(({speed > 20} & {distance < 20}) -> F[1, 3]({action > 0} & {action < 2})) & '
+                            'G(({speed > 20} & {distance > 20}) -> F[1, 3]({action > 0} & {action < 2})))',
                 'quantitative': True
             },
         ]
@@ -89,38 +64,39 @@ class ArbiterEnv():
 
         self.specification = '(' + self.env_specification + ' -> ' + self.sys_specification + ')'
 
-        self.observation_space = Discrete(4)
-        self.action_space = Discrete(4)
-        self.observation = 0
-        self.action = 0
+        # speed, distance
+        self.observation_space = Box(low=np.array([0.0, 0.0]), high=np.array([40.0, 40.0]), dtype=np.float32)
+        # accelerate, decelerate, fully stop
+        self.action_space = Discrete(3)
+        self.observation = [10.0, 10.0]
+        self.action = 2
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
 
-        self.action = None
         self.window = None
         self.clock = None
 
     def take_env(self):
         def compute_observation():
             obs = self.observation_space.sample()
-            value = self.observation_value[obs]
-            self.traces['p'].append((len(self.traces['p']), 1 if value[0] == '+' else 0))
-            self.traces['q'].append((len(self.traces['q']), 1 if value[0] == '+' else 0))
+            self.traces['speed'].append((len(self.traces['speed']), obs[0]))
+            self.traces['distance'].append((len(self.traces['distance']), obs[1]))
+
             safety_eval = True
-            if len(self.sys_properties[0]['property']) > 0:
-                phi = stl.parse(self.sys_properties[0]['property'])
-                safety_eval = True if phi(self.traces) >= 0 else False
+            if len(self.env_properties[0]['property']) > 0:
+                phi = stl.parse(self.env_properties[0]['property'])
+                safety_eval = True if phi(self.traces, quantitative=self.env_properties[0]['quantitative']) > 0 else False
             liveness_eval = True
-            if len(self.sys_properties[1]['property']) > 0:
-                phi = stl.parse(self.sys_properties[1]['property'])
-                liveness_eval = True if phi(self.traces) >= 0 else False
+            if len(self.env_properties[1]['property']) > 0:
+                phi = stl.parse(self.env_properties[1]['property'])
+                liveness_eval = True if phi(self.traces, quantitative=self.env_properties[1]['quantitative']) > 0 else False
             if safety_eval and liveness_eval:
                 self.observation = obs
                 return True
             else:
-                self.traces['p'].pop(len(self.traces['p']) - 1)
-                self.traces['q'].pop(len(self.traces['q']) - 1)
+                self.traces['speed'].pop(len(self.traces['speed']) - 1)
+                self.traces['distance'].pop(len(self.traces['distance']) - 1)
                 return False
 
         cnt = 1
@@ -134,11 +110,11 @@ class ArbiterEnv():
 
     def step(self, action):
         self.action = action
-        value = self.action_value[self.action]
-        self.traces['r'].append((len(self.traces['r']), 1 if value[0] == '+' else 0))
-        self.traces['s'].append((len(self.traces['s']), 1 if value[0] == '+' else 0))
+        self.traces['action'].append((len(self.traces['action']), self.action))
 
         obs = np.array(self.observation)
+
+        done = False
         info = {
             'satisfiable': False
         }
@@ -146,40 +122,36 @@ class ArbiterEnv():
         safety_eval = True
         if len(self.sys_properties[0]['property']) > 0:
             phi = stl.parse(self.sys_properties[0]['property'])
-            safety_eval = True if phi(self.traces) >= 0 else False
+            safety_eval = True if phi(self.traces, quantitative=self.sys_properties[0]['quantitative']) > 0 else False
         liveness_eval = True
         if len(self.sys_properties[1]['property']) > 0:
             phi = stl.parse(self.sys_properties[1]['property'])
-            liveness_eval = True if phi(self.traces) >= 0 else False
+            liveness_eval = True if phi(self.traces, quantitative=self.sys_properties[1]['quantitative']) > 0 else False
+        if safety_eval and len(self.sys_properties[0]['property']) > 0:
+            reward += 1
+        if liveness_eval and len(self.sys_properties[1]['property']) > 0:
+            reward *= 2
         if safety_eval and liveness_eval:
-            reward += 10
             done = False
             info['satisfiable'] = True
         elif safety_eval and not liveness_eval:
-            reward += 1
             done = False
             info['satisfiable'] = False
-        # elif not safety_eval and liveness_eval:
-        #     reward += -500
-        #     done = False
-        #     info['satisfiable'] = False
-        else:
-            reward += -10
+        elif not safety_eval and liveness_eval:
+            done = True
+            info['satisfiable'] = False
+        elif not safety_eval and not liveness_eval:
             done = True
             info['satisfiable'] = False
         return obs, reward, done, info
 
     def reset(self):
         self.traces = {
-            'p': [],
-            'q': [],
-            'r': [],
-            's': [],
+            'speed': [(0, 10)],
+            'distance': [(0, 10)],
+            'action': [(0, 2)]
         }
-        self.observation = self.observation_space.sample()
-        value = self.observation_value[self.observation]
-        self.traces['p'].append((len(self.traces['p']), 1 if value[0] == '+' else 0))
-        self.traces['q'].append((len(self.traces['q']), 1 if value[0] == '+' else 0))
+
         return np.array(self.observation)
 
     def render(self):
@@ -197,7 +169,7 @@ class ArbiterEnv():
         canvas = pygame.Surface((self.window_size, self.window_size))
         canvas.fill((255, 255, 255))
         pix_square_size = (
-                self.window_size / self.size
+            self.window_size / self.size
         )  # The size of a single grid square in pixels
 
         # First we draw the target
