@@ -1,5 +1,5 @@
 import numpy as np
-from gym.spaces import Discrete, Box
+from gym.spaces import Discrete, Box, MultiBinary
 import gym
 import pygame
 import stl
@@ -13,55 +13,18 @@ class ActorCritic(gym.Env):
         self.size = size  # The size of the square grid
         self.window_size = 512 # The size of the PyGame window
 
-        self.observation_value = [['closed', 'none', '+'], ['closed', 'open', '+'], ['partially', 'open', '-'],
-                                  ['opened', 'none', '-'], ['opened', 'open', '-'], ['opened', 'close', '-'],
-                                  ['partially', 'close', '-'], ['closed', 'none', '-'], ['closed', 'open', '-'],
-                                  ['closed', 'close', '-']]
-        # p0, p1
-        # closed, partially_open, open
-        # for i in ['00', '01', '10']:
-            # q0, q1
-            # nothing, close, open
-            # for j in ['00', '01', '10']:
-                # r0
-                # off, on
-                # for k in ['0', '1']:
-                #     value = []
-                #     value.append(i[0])
-                #     value.append(i[1])
-                #     value.append(j[0])
-                #     value.append(j[1])
-                #     value.append(k)
-                #     self.observation_value.append(value)
-
-        # s0, s1
-        # nothing, turn_off, turn_on
-        self.action_value = [['nothing'], ['off'], ['on']]
-
         self.env_properties = [
             {
+
                 'category': 'safety',
-                'property': '(G((closed & none) -> Xclosed) & ' # door
-                            'G((opened & none) -> Xopened) & '
-                            'G((closed & open) -> Xpartially) & '
-                            'G((opened & close) -> Xpartially) & '
-                            'G((partially & open) -> Xopened) & '
-                            'G((partially & close) -> Xclosed) & '
-                            'G((closed & ~partially & ~opened) | (~closed & partially & ~opened) | '
-                            '(~closed & ~partially & opened)) & '
-                            'G(closed -> (Xopen | Xnone)) & ' # request
-                            'G(opened -> (Xclose | Xnone)) & '
-                            'G((open & X~opened) -> Xopen) & '
-                            'G((close & X~closed) -> Xclose) & '
-                            'G((none & ~close & ~open) | (~none & close & ~open) | (~none & ~close & open)) & '
-                            'G(off -> X~power) & '  # power
-                            'G(on -> Xpower) & '
-                            'G(nothing -> (Xpower <-> power)))',
+                'property': '(G((r0 & ~g0) -> Xr0) & ' 
+                            'G((r1 & ~g1) -> Xr1))',
                 'quantitative': False
             },
             {
                 'category': 'liveness',
-                'property': '',
+                'property': '(G((r0 & g0) -> F~r0) & '
+                            'G((r1 & g1) -> F~r1))',
                 'quantitative': False
             },
         ]
@@ -78,15 +41,15 @@ class ActorCritic(gym.Env):
         self.sys_properties = [
             {
                 'category': 'safety',
-                'property': '(G(Xopen -> Xoff) & '
-                            'G((Xclosed & Xclose) -> Xon) & '
-                            'G(Xnone -> Xnothing) & '
-                            'G((nothing & ~off & ~on) | (~nothing & off & ~on) | (~nothing & ~off & on)))',
+                'property': '(G(~(g0 & g1)) & '
+                            'G(X~r0 -> X~g0) & '
+                            'G(X~r1 -> X~g1))',
                 'quantitative': False
             },
             {
                 'category': 'liveness',
-                'property': '',
+                'property': '(G((r0 & ~g0) -> (r0 U g0)) & '
+                            'G((r1 & ~g1) -> (r1 U g1)))',
                 'quantitative': False
             },
         ]
@@ -102,9 +65,9 @@ class ActorCritic(gym.Env):
 
         self.specification = '(' + self.env_specification + ' -> ' + self.sys_specification + ')'
 
-        self.observation_space = Discrete(10)
-        self.action_space = Discrete(3)
-        self.observation = 0
+        self.observation_space = MultiBinary(2)
+        self.action_space = MultiBinary(2)
+        self.observation = [0, 0]
         self.action = 0
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
@@ -116,14 +79,8 @@ class ActorCritic(gym.Env):
     def take_env(self):
         def compute_observation():
             obs = self.observation_space.sample()
-            value = self.observation_value[obs]
-            self.traces['closed'].append((len(self.traces['closed']), True if value[0] == 'closed' else False))
-            self.traces['partially'].append((len(self.traces['partially']), True if value[0] == 'partially' else False))
-            self.traces['opened'].append((len(self.traces['opened']), True if value[0] == 'opened' else False))
-            self.traces['none'].append((len(self.traces['none']), True if value[1] == 'none' else False))
-            self.traces['close'].append((len(self.traces['close']), True if value[1] == 'close' else False))
-            self.traces['open'].append((len(self.traces['open']), True if value[1] == 'open' else False))
-            self.traces['power'].append((len(self.traces['power']), True if value[2] == '+' else False))
+            self.traces['r0'].append((len(self.traces['r0']), True if obs[0] == 1 else False))
+            self.traces['r1'].append((len(self.traces['r1']), True if obs[1] == 1 else False))
 
             safety_eval = True
             if len(self.env_properties[0]['property']) > 0:
@@ -137,13 +94,8 @@ class ActorCritic(gym.Env):
                 self.observation = obs
                 return True
             else:
-                self.traces['closed'].pop(len(self.traces['closed']) - 1)
-                self.traces['partially'].pop(len(self.traces['partially']) - 1)
-                self.traces['opened'].pop(len(self.traces['opened']) - 1)
-                self.traces['none'].pop(len(self.traces['none']) - 1)
-                self.traces['close'].pop(len(self.traces['close']) - 1)
-                self.traces['open'].pop(len(self.traces['open']) - 1)
-                self.traces['power'].pop(len(self.traces['power']) - 1)
+                self.traces['r0'].pop(len(self.traces['r0']) - 1)
+                self.traces['r1'].pop(len(self.traces['r1']) - 1)
                 return False
 
         cnt = 1
@@ -157,10 +109,9 @@ class ActorCritic(gym.Env):
 
     def step(self, action):
         self.action = action
-        value = self.action_value[self.action]
-        self.traces['nothing'].append((len(self.traces['nothing']), True if value[0] == 'nothing' else False))
-        self.traces['off'].append((len(self.traces['off']), True if value[0] == 'off' else False))
-        self.traces['on'].append((len(self.traces['on']), True if value[0] == 'on' else False))
+        value = format(self.action, 'b').zfill(self.action_space.n)
+        self.traces['g0'].append((len(self.traces['g0']), True if value[0] == '1' else False))
+        self.traces['g1'].append((len(self.traces['g1']), True if value[1] == '1' else False))
 
         obs = np.array(self.observation)
 
@@ -177,10 +128,10 @@ class ActorCritic(gym.Env):
         if len(self.sys_properties[1]['property']) > 0:
             phi = stl.parse(self.sys_properties[1]['property'])
             liveness_eval = phi(self.traces, quantitative=self.sys_properties[1]['quantitative'])
-        if safety_eval and len(self.sys_properties[0]['property']) > 0:
+        if safety_eval:
             reward += 1
-        if liveness_eval and len(self.sys_properties[1]['property']) > 0:
-            reward *= 2
+        if liveness_eval:
+            reward += 2
         if safety_eval and liveness_eval:
             done = False
             info['satisfiable'] = True
@@ -197,31 +148,11 @@ class ActorCritic(gym.Env):
 
     def reset(self):
         self.traces = {
-            # door
-            'closed': [(0, True)],
-            'partially': [(0, False)],
-            'opened': [(0, False)],
-            # request
-            'none': [(0, True)],
-            'close': [(0, False)],
-            'open': [(0, False)],
-            # power
-            'power': [(0, True)],
-            # action
-            'nothing': [(0, True)],
-            'off': [(0, False)],
-            'on': [(0, False)]
+            'r0': [(0, False)],
+            'r1': [(0, False)],
+            'g0': [(0, False)],
+            'g1': [(0, False)],
         }
-        # self.observation = self.observation_space.sample()
-        # value = self.observation_value[self.observation]
-        # self.traces['closed'].append((len(self.traces['closed']), True if value[0] == 'closed' else False))
-        # self.traces['partially'].append((len(self.traces['partially']), True if value[0] == 'partially' else False))
-        # self.traces['opened'].append((len(self.traces['opened']), True if value[0] == 'opened' else False))
-        # self.traces['none'].append((len(self.traces['none']), True if value[1] == 'none' else False))
-        # self.traces['close'].append((len(self.traces['close']), True if value[1] == 'close' else False))
-        # self.traces['open'].append((len(self.traces['open']), True if value[1] == 'open' else False))
-        # self.traces['power'].append((len(self.traces['power']), True if value[2] == '+' else False))
-
         return np.array(self.observation)
 
     def render(self):

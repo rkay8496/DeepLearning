@@ -1,20 +1,22 @@
 import numpy as np
 import tensorflow as tf
-import gym
 import tensorflow_probability as tfp
 import keras.losses as kls
 import matplotlib.pyplot as plt
-from AdaptiveCruiseControl.ACCA2CEnv_v1 import ActorCritic
+from DoorInterlockSystem.MTL.DoorInterlockSystemA2CEnv_v1 import ActorCritic
 import json
+import os
+
+current_path = os.getcwd()
 
 env = ActorCritic(render_mode='human')
-# state_size = env.observation_space.n
-action_size = env.action_space.n
+state_size = 18
+action_size = 3
 
 class critic(tf.keras.Model):
     def __init__(self):
         super().__init__()
-        self.d1 = tf.keras.layers.Dense(128, activation='relu')
+        self.d1 = tf.keras.layers.Dense(state_size, activation='relu')
         # self.d2 = tf.keras.layers.Dense(1536, activation='relu')
         self.v = tf.keras.layers.Dense(1, activation=None)
 
@@ -28,7 +30,7 @@ class critic(tf.keras.Model):
 class actor(tf.keras.Model):
     def __init__(self):
         super().__init__()
-        self.d1 = tf.keras.layers.Dense(128, input_shape=(2,), activation='relu')
+        self.d1 = tf.keras.layers.Dense(state_size, input_shape=(3,), activation='relu')
         # self.d2 = tf.keras.layers.Dense(1536, activation='relu')
         self.a = tf.keras.layers.Dense(action_size, activation='softmax')
         self.model = tf.keras.models.Sequential([
@@ -47,8 +49,8 @@ class actor(tf.keras.Model):
 class agent():
     def __init__(self, gamma=0.99):
         self.gamma = gamma
-        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.0001)
-        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.0001)
+        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.08)
+        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.08)
         self.actor = actor()
         self.critic = critic()
 
@@ -128,75 +130,10 @@ def preprocess1(states, actions, rewards, gamma):
     return states, actions, discnt_rewards
 
 
+f = open(current_path + '/DoorInterlockSystemA2C_2_traces.json', 'w')
 tf.random.set_seed(336699)
 agentoo7 = agent()
 steps = 10000
-ep_reward = []
-total_avgr = []
-for s in range(steps):
-
-    done = False
-    total_reward = 0
-    all_aloss = []
-    all_closs = []
-    rewards = []
-    states = []
-    actions = []
-
-    state = env.reset()
-    state = np.array([state])
-    states.append(state)
-    actions.append(env.action)
-    rewards.append(0)
-    total_reward += 0
-
-    while not done:
-
-        computed = env.take_env()
-        if not computed:
-            break
-
-        state = np.array([env.observation])
-        action = agentoo7.act(state)
-        next_state, reward, done, _ = env.step(action)
-        rewards.append(reward)
-        states.append(state)
-        # actions.append(tf.one_hot(action, 2, dtype=tf.int32).numpy().tolist())
-        actions.append(action)
-        next_state = np.array([next_state])
-        state = next_state
-        total_reward += reward
-
-        if done and total_reward > 0:
-            total_reward -= reward
-            rewards.pop()
-            states.pop()
-            actions.pop()
-            ep_reward.append(total_reward)
-            avg_reward = np.mean(ep_reward[:])
-            total_avgr.append(avg_reward)
-            print("total reward after {} steps is {} and avg reward is {}".format(s, total_reward, avg_reward))
-            states, actions, discnt_rewards = preprocess1(states, actions, rewards, 1)
-            al, cl = agentoo7.learn(states, actions, discnt_rewards)
-            print(f"al{al}")
-            print(f"cl{cl}")
-
-agentoo7.actor.model.save('./A2C.h5')
-model = tf.keras.models.load_model('./A2C.h5')
-print(model.predict(list(range(env.observation_space.n))))
-
-ep = [i for i in range(len(total_avgr))]
-plt.plot(ep, total_avgr, 'b')
-plt.title("avg reward Vs episodes")
-plt.xlabel("episodes")
-plt.ylabel("average reward per 100 episodes")
-plt.grid(True)
-plt.savefig('./avg_reward_train.png')
-plt.show()
-
-f = open('./traces.json', 'w')
-agentoo7 = agent()
-steps = 1000
 ep_reward = []
 total_avgr = []
 ep_length = []
@@ -210,6 +147,7 @@ for s in range(steps):
     rewards = []
     states = []
     actions = []
+    cnt = 0
 
     state = env.reset()
     state = np.array([state])
@@ -218,12 +156,13 @@ for s in range(steps):
     rewards.append(0)
     total_reward += 0
 
-    while not done:
+    while not done and cnt < 100:
 
         computed = env.take_env()
         if not computed:
             break
 
+        cnt += 1
         state = np.array([env.observation])
         action = agentoo7.act(state)
         next_state, reward, done, _ = env.step(action)
@@ -236,7 +175,7 @@ for s in range(steps):
         total_reward += reward
 
         if done and total_reward > 0:
-            total_reward -= reward
+            # total_reward -= reward
             rewards.pop()
             states.pop()
             actions.pop()
@@ -246,24 +185,32 @@ for s in range(steps):
             ep_length.append(len(env.traces[list(env.traces.keys())[0]]))
             total_length.append(np.mean(ep_length[:]))
             print("total reward after {} steps is {} and avg reward is {}".format(s, total_reward, avg_reward))
+            states, actions, discnt_rewards = preprocess1(states, actions, rewards, 1)
+            al, cl = agentoo7.learn(states, actions, discnt_rewards)
+            print(f"al{al}")
+            print(f"cl{cl}")
             f.write(json.dumps(env.traces) + '\n')
+
+agentoo7.actor.model.save(current_path + '/DoorInterlockSystemA2C_2.h5')
+model = tf.keras.models.load_model(current_path + '/DoorInterlockSystemA2C_2.h5')
+# print(model.predict(list(range(env.observation_space.n))))
 
 ep = [i for i in range(len(total_avgr))]
 plt.plot(ep, total_avgr, 'b')
 plt.title("avg reward Vs episodes")
 plt.xlabel("episodes")
-plt.ylabel("average reward per 100 episodes")
+plt.ylabel("average reward")
 plt.grid(True)
-plt.savefig('./avg_reward_test.png')
+plt.savefig(current_path + '/DoorInterlockSystemA2C_2_avg_reward.png')
 plt.show()
 
 ep = [i for i in range(len(total_length))]
 plt.plot(ep, total_length, 'b')
 plt.title("avg trace length Vs episodes")
 plt.xlabel("episodes")
-plt.ylabel("avg trace length per 100 episodes")
+plt.ylabel("avg trace length")
 plt.grid(True)
-plt.savefig('./avg_trace_length_test.png')
+plt.savefig(current_path + '/DoorInterlockSystemA2C_2_avg_trace_length.png')
 plt.show()
 
 f.close()
