@@ -1,5 +1,5 @@
 import numpy as np
-from gym.spaces import Discrete, MultiDiscrete
+from gym.spaces import MultiDiscrete, Discrete
 import gym
 import pygame
 import stl
@@ -15,28 +15,19 @@ class ActorCritic(gym.Env):
 
         self.env_properties = [
             {
+
                 'category': 'safety',
-                'property': '(G((closed & none) -> Xclosed) & ' # door
-                            'G((opened & none) -> Xopened) & '
-                            'G((closed & open) -> Xpartially) & '
-                            'G((opened & close) -> Xpartially) & '
-                            'G((partially & open) -> Xopened) & '
-                            'G((partially & close) -> Xclosed) & '
-                            'G((closed & ~partially & ~opened) | (~closed & partially & ~opened) | '
-                            '(~closed & ~partially & opened)) & '
-                            'G(closed -> (Xopen | Xnone)) & ' # request
-                            'G(opened -> (Xclose | Xnone)) & '
-                            'G((open & X~opened) -> Xopen) & '
-                            'G((close & X~closed) -> Xclose) & '
-                            'G((none & ~close & ~open) | (~none & close & ~open) | (~none & ~close & open)) & '
-                            'G(off -> X~power) & '  # power
-                            'G(on -> Xpower) & '
-                            'G(nothing -> (Xpower <-> power)))',
+                'property': '',
                 'quantitative': False
             },
             {
                 'category': 'liveness',
-                'property': '',
+                'property': '(G(ltd -> (ltd W eqd)) & '
+                            'G(eqd -> (eqd W (ltd | gtd))) & '
+                            'G(gtd -> (gtd W eqd)) & '
+                            'G(lts -> (lts W eqs)) & '
+                            'G(eqs -> (eqs W (lts | gts))) & '
+                            'G(gts -> (gts W eqs)))',
                 'quantitative': False
             },
         ]
@@ -53,14 +44,13 @@ class ActorCritic(gym.Env):
         self.sys_properties = [
             {
                 'category': 'safety',
-                'property': '(G((Xclosed & Xclose) -> Xon) & '
-                            'G(Xnone -> Xnothing) & '
-                            'G((nothing & ~off & ~on) | (~nothing & off & ~on) | (~nothing & ~off & on)))',
+                'property': '(G((ltd | gts) -> Xdecel) & '
+                            'G(((eqd | gtd) & eqs) -> Xkeep))',
                 'quantitative': False
             },
             {
                 'category': 'liveness',
-                'property': '(G(open -> (closed U[0, 2] off)))',
+                'property': '(G((gtd & lts) -> F[0, 2]accel))',
                 'quantitative': False
             },
         ]
@@ -76,10 +66,10 @@ class ActorCritic(gym.Env):
 
         self.specification = '(' + self.env_specification + ' -> ' + self.sys_specification + ')'
 
-        self.observation_space = MultiDiscrete([3, 3, 2])
+        self.observation_space = MultiDiscrete([3, 3])
         self.action_space = Discrete(3)
-        self.observation = [0, 0, 1]
-        self.action = 0
+        self.observation = [2, 0]
+        self.action = 2
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -90,13 +80,12 @@ class ActorCritic(gym.Env):
     def take_env(self):
         def compute_observation():
             obs = self.observation_space.sample()
-            self.traces['closed'].append((len(self.traces['closed']), True if obs[0] == 0 else False))
-            self.traces['partially'].append((len(self.traces['partially']), True if obs[0] == 1 else False))
-            self.traces['opened'].append((len(self.traces['opened']), True if obs[0] == 2 else False))
-            self.traces['none'].append((len(self.traces['none']), True if obs[1] == 0 else False))
-            self.traces['close'].append((len(self.traces['close']), True if obs[1] == 1 else False))
-            self.traces['open'].append((len(self.traces['open']), True if obs[1] == 2 else False))
-            self.traces['power'].append((len(self.traces['power']), True if obs[2] == 1 else False))
+            self.traces['ltd'].append((len(self.traces['ltd']), True if obs[0] == 0 else False))
+            self.traces['eqd'].append((len(self.traces['eqd']), True if obs[0] == 1 else False))
+            self.traces['gtd'].append((len(self.traces['gtd']), True if obs[0] == 2 else False))
+            self.traces['lts'].append((len(self.traces['lts']), True if obs[1] == 0 else False))
+            self.traces['eqs'].append((len(self.traces['eqs']), True if obs[1] == 1 else False))
+            self.traces['gts'].append((len(self.traces['gts']), True if obs[1] == 2 else False))
 
             safety_eval = True
             if len(self.env_properties[0]['property']) > 0:
@@ -110,13 +99,12 @@ class ActorCritic(gym.Env):
                 self.observation = obs
                 return True
             else:
-                self.traces['closed'].pop(len(self.traces['closed']) - 1)
-                self.traces['partially'].pop(len(self.traces['partially']) - 1)
-                self.traces['opened'].pop(len(self.traces['opened']) - 1)
-                self.traces['none'].pop(len(self.traces['none']) - 1)
-                self.traces['close'].pop(len(self.traces['close']) - 1)
-                self.traces['open'].pop(len(self.traces['open']) - 1)
-                self.traces['power'].pop(len(self.traces['power']) - 1)
+                self.traces['ltd'].pop(len(self.traces['ltd']) - 1)
+                self.traces['eqd'].pop(len(self.traces['eqd']) - 1)
+                self.traces['gtd'].pop(len(self.traces['gtd']) - 1)
+                self.traces['lts'].pop(len(self.traces['lts']) - 1)
+                self.traces['eqs'].pop(len(self.traces['eqs']) - 1)
+                self.traces['gts'].pop(len(self.traces['gts']) - 1)
                 return False
 
         cnt = 1
@@ -124,15 +112,15 @@ class ActorCritic(gym.Env):
         while not computed:
             computed = compute_observation()
             cnt += 1
-            if cnt == 20 and not computed:
+            if cnt == 10 and not computed:
                 break
         return computed
 
     def step(self, action):
         self.action = action
-        self.traces['nothing'].append((len(self.traces['nothing']), True if self.action == 0 else False))
-        self.traces['off'].append((len(self.traces['off']), True if self.action == 1 else False))
-        self.traces['on'].append((len(self.traces['on']), True if self.action == 2 else False))
+        self.traces['decel'].append((len(self.traces['decel']), True if self.action == 0 else False))
+        self.traces['keep'].append((len(self.traces['keep']), True if self.action == 1 else False))
+        self.traces['accel'].append((len(self.traces['accel']), True if self.action == 2 else False))
 
         obs = np.array(self.observation)
 
@@ -167,22 +155,19 @@ class ActorCritic(gym.Env):
 
     def reset(self):
         self.traces = {
-            # door
-            'closed': [(0, True)],
-            'partially': [(0, False)],
-            'opened': [(0, False)],
-            # request
-            'none': [(0, True)],
-            'close': [(0, False)],
-            'open': [(0, False)],
-            # power
-            'power': [(0, True)],
+            # safe distance
+            'ltd': [(0, False)],
+            'eqd': [(0, False)],
+            'gtd': [(0, True)],
+            # current speed
+            'lts': [(0, True)],
+            'eqs': [(0, False)],
+            'gts': [(0, False)],
             # action
-            'nothing': [(0, True)],
-            'off': [(0, False)],
-            'on': [(0, False)]
+            'decel': [(0, False)],
+            'keep': [(0, False)],
+            'accel': [(0, True)],
         }
-
         return np.array(self.observation)
 
     def render(self):

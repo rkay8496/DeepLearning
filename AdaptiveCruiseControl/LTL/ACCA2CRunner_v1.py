@@ -49,8 +49,8 @@ class actor(tf.keras.Model):
 class agent():
     def __init__(self, gamma=0.99):
         self.gamma = gamma
-        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.1)
-        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.1)
+        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.05)
+        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.05)
         self.actor = actor()
         self.critic = critic()
 
@@ -130,10 +130,10 @@ def preprocess1(states, actions, rewards, gamma):
     return states, actions, discnt_rewards
 
 
-f = open(current_path + '/DoorInterlockSystemA2C_v1_traces.json', 'w')
-tf.random.set_seed(336699)
+f = open(current_path + '/ACCA2C_v1_traces.json', 'w')
+# tf.random.set_seed(336699)
 agentoo7 = agent()
-steps = 10000
+steps = 500
 ep_reward = []
 total_avgr = []
 ep_length = []
@@ -191,8 +191,8 @@ for s in range(steps):
             print(f"cl{cl}")
             f.write(json.dumps(env.traces) + '\n')
 
-agentoo7.actor.model.save(current_path + '/DoorInterlockSystemA2C_v1.h5')
-model = tf.keras.models.load_model(current_path + '/DoorInterlockSystemA2C_v1.h5')
+agentoo7.actor.model.save(current_path + '/ACCA2C_v1.h5')
+model = tf.keras.models.load_model(current_path + '/ACCA2C_v1.h5')
 # print(model.predict(list(range(env.observation_space.n))))
 
 ep = [i for i in range(len(total_avgr))]
@@ -201,7 +201,7 @@ plt.title("avg reward Vs episodes")
 plt.xlabel("episodes")
 plt.ylabel("average reward")
 plt.grid(True)
-plt.savefig(current_path + '/DoorInterlockSystemA2C_v1_avg_reward.png')
+plt.savefig(current_path + '/ACCA2C_v1_avg_reward.png')
 plt.show()
 
 ep = [i for i in range(len(total_length))]
@@ -210,7 +210,7 @@ plt.title("avg trace length Vs episodes")
 plt.xlabel("episodes")
 plt.ylabel("avg trace length")
 plt.grid(True)
-plt.savefig(current_path + '/DoorInterlockSystemA2C_v1_avg_trace_length.png')
+plt.savefig(current_path + '/ACCA2C_v1_avg_trace_length.png')
 plt.show()
 
 f.close()

@@ -1,5 +1,5 @@
 import numpy as np
-from gym.spaces import Discrete, MultiDiscrete
+from gym.spaces import Box, Discrete
 import gym
 import pygame
 import stl
@@ -15,29 +15,20 @@ class ActorCritic(gym.Env):
 
         self.env_properties = [
             {
+
                 'category': 'safety',
-                'property': '(G((closed & none) -> Xclosed) & ' # door
-                            'G((opened & none) -> Xopened) & '
-                            'G((closed & open) -> Xpartially) & '
-                            'G((opened & close) -> Xpartially) & '
-                            'G((partially & open) -> Xopened) & '
-                            'G((partially & close) -> Xclosed) & '
-                            'G((closed & ~partially & ~opened) | (~closed & partially & ~opened) | '
-                            '(~closed & ~partially & opened)) & '
-                            'G(closed -> (Xopen | Xnone)) & ' # request
-                            'G(opened -> (Xclose | Xnone)) & '
-                            'G((open & X~opened) -> Xopen) & '
-                            'G((close & X~closed) -> Xclose) & '
-                            'G((none & ~close & ~open) | (~none & close & ~open) | (~none & ~close & open)) & '
-                            'G(off -> X~power) & '  # power
-                            'G(on -> Xpower) & '
-                            'G(nothing -> (Xpower <-> power)))',
+                'property': '',
                 'quantitative': False
             },
             {
                 'category': 'liveness',
-                'property': '',
-                'quantitative': False
+                'property': '(G({distance < 30} -> ({distance < 30} W ({distance > 29} & {distance < 40}))) & '
+                            'G(({distance > 29} & {distance < 40}) -> (({distance > 29} & {distance < 40}) W ({distance < 30} | {distance > 39}))) & '
+                            'G({distance > 39} -> ({distance > 39} W ({distance > 29} & {distance < 40}))) & '
+                            'G({speed < 70} -> ({speed < 70} W ({speed > 69} & {speed < 80}))) & '
+                            'G(({speed > 69} & {speed < 80}) -> (({speed > 69} & {speed < 80}) W ({speed < 70} | {speed > 79}))) & '
+                            'G({speed > 79} -> ({speed > 79} W ({speed > 69} & {speed < 80}))))',
+                'quantitative': True
             },
         ]
 
@@ -53,15 +44,14 @@ class ActorCritic(gym.Env):
         self.sys_properties = [
             {
                 'category': 'safety',
-                'property': '(G((Xclosed & Xclose) -> Xon) & '
-                            'G(Xnone -> Xnothing) & '
-                            'G((nothing & ~off & ~on) | (~nothing & off & ~on) | (~nothing & ~off & on)))',
+                'property': '(G(F[1, 1]({distance < 30} | {speed > 79}) -> F[1, 1]decel) & '
+                            'G(F[1, 1]((({distance > 29} & {distance < 40}) | {distance > 39}) & ({speed > 69} & {speed < 80})) -> F[1, 1]keep))',
                 'quantitative': False
             },
             {
                 'category': 'liveness',
-                'property': '(G(open -> (closed U[0, 2] off)))',
-                'quantitative': False
+                'property': '(G(F[1, 1]({distance > 39} & {speed < 70}) -> F[1, 2]accel))',
+                'quantitative': True
             },
         ]
 
@@ -76,10 +66,10 @@ class ActorCritic(gym.Env):
 
         self.specification = '(' + self.env_specification + ' -> ' + self.sys_specification + ')'
 
-        self.observation_space = MultiDiscrete([3, 3, 2])
+        self.observation_space = Box(low=np.array([1, 1]), high=np.array([100, 200]), dtype=np.float32)
         self.action_space = Discrete(3)
-        self.observation = [0, 0, 1]
-        self.action = 0
+        self.observation = [50, 10]
+        self.action = 2
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -90,33 +80,23 @@ class ActorCritic(gym.Env):
     def take_env(self):
         def compute_observation():
             obs = self.observation_space.sample()
-            self.traces['closed'].append((len(self.traces['closed']), True if obs[0] == 0 else False))
-            self.traces['partially'].append((len(self.traces['partially']), True if obs[0] == 1 else False))
-            self.traces['opened'].append((len(self.traces['opened']), True if obs[0] == 2 else False))
-            self.traces['none'].append((len(self.traces['none']), True if obs[1] == 0 else False))
-            self.traces['close'].append((len(self.traces['close']), True if obs[1] == 1 else False))
-            self.traces['open'].append((len(self.traces['open']), True if obs[1] == 2 else False))
-            self.traces['power'].append((len(self.traces['power']), True if obs[2] == 1 else False))
+            self.traces['distance'].append((len(self.traces['distance']), obs[0]))
+            self.traces['speed'].append((len(self.traces['speed']), obs[1]))
 
             safety_eval = True
             if len(self.env_properties[0]['property']) > 0:
                 phi = stl.parse(self.env_properties[0]['property'])
-                safety_eval = phi(self.traces, quantitative=self.env_properties[0]['quantitative'])
+                safety_eval = True if phi(self.traces) > 0 else False
             liveness_eval = True
             if len(self.env_properties[1]['property']) > 0:
                 phi = stl.parse(self.env_properties[1]['property'])
-                liveness_eval = phi(self.traces, quantitative=self.env_properties[1]['quantitative'])
+                liveness_eval = True if phi(self.traces) > 0 else False
             if safety_eval and liveness_eval:
                 self.observation = obs
                 return True
             else:
-                self.traces['closed'].pop(len(self.traces['closed']) - 1)
-                self.traces['partially'].pop(len(self.traces['partially']) - 1)
-                self.traces['opened'].pop(len(self.traces['opened']) - 1)
-                self.traces['none'].pop(len(self.traces['none']) - 1)
-                self.traces['close'].pop(len(self.traces['close']) - 1)
-                self.traces['open'].pop(len(self.traces['open']) - 1)
-                self.traces['power'].pop(len(self.traces['power']) - 1)
+                self.traces['distance'].pop(len(self.traces['distance']) - 1)
+                self.traces['speed'].pop(len(self.traces['speed']) - 1)
                 return False
 
         cnt = 1
@@ -124,15 +104,15 @@ class ActorCritic(gym.Env):
         while not computed:
             computed = compute_observation()
             cnt += 1
-            if cnt == 20 and not computed:
+            if cnt == 10 and not computed:
                 break
         return computed
 
     def step(self, action):
         self.action = action
-        self.traces['nothing'].append((len(self.traces['nothing']), True if self.action == 0 else False))
-        self.traces['off'].append((len(self.traces['off']), True if self.action == 1 else False))
-        self.traces['on'].append((len(self.traces['on']), True if self.action == 2 else False))
+        self.traces['decel'].append((len(self.traces['decel']), True if self.action == 0 else False))
+        self.traces['keep'].append((len(self.traces['keep']), True if self.action == 1 else False))
+        self.traces['accel'].append((len(self.traces['accel']), True if self.action == 2 else False))
 
         obs = np.array(self.observation)
 
@@ -144,11 +124,11 @@ class ActorCritic(gym.Env):
         safety_eval = True
         if len(self.sys_properties[0]['property']) > 0:
             phi = stl.parse(self.sys_properties[0]['property'])
-            safety_eval = phi(self.traces, quantitative=self.sys_properties[0]['quantitative'])
+            safety_eval = True if phi(self.traces) > 0 else False
         liveness_eval = True
         if len(self.sys_properties[1]['property']) > 0:
             phi = stl.parse(self.sys_properties[1]['property'])
-            liveness_eval = phi(self.traces, quantitative=self.sys_properties[1]['quantitative'])
+            liveness_eval = True if phi(self.traces) > 0 else False
         if safety_eval and liveness_eval:
             reward += 1
             done = False
@@ -167,22 +147,15 @@ class ActorCritic(gym.Env):
 
     def reset(self):
         self.traces = {
-            # door
-            'closed': [(0, True)],
-            'partially': [(0, False)],
-            'opened': [(0, False)],
-            # request
-            'none': [(0, True)],
-            'close': [(0, False)],
-            'open': [(0, False)],
-            # power
-            'power': [(0, True)],
+            # safe distance
+            'distance': [(0, 50)],
+            # current speed
+            'speed': [(0, 10)],
             # action
-            'nothing': [(0, True)],
-            'off': [(0, False)],
-            'on': [(0, False)]
+            'decel': [(0, False)],
+            'keep': [(0, False)],
+            'accel': [(0, True)],
         }
-
         return np.array(self.observation)
 
     def render(self):

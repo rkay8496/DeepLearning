@@ -130,7 +130,7 @@ def preprocess1(states, actions, rewards, gamma):
 f = open('ArbiterA2C_2_traces.json', 'w')
 tf.random.set_seed(336699)
 agentoo7 = agent()
-steps = 1000
+steps = 5000
 ep_reward = []
 total_avgr = []
 ep_length = []

@@ -1,18 +1,17 @@
 import numpy as np
 import tensorflow as tf
-import gym
 import tensorflow_probability as tfp
 import keras.losses as kls
 import matplotlib.pyplot as plt
-from Arbiter.MTL.ArbiterA2CEnv_2 import ActorCritic
+from AdaptiveCruiseControl.STL.ACCA2CEnv_v1 import ActorCritic
 import json
 import os
 
 current_path = os.getcwd()
 
 env = ActorCritic(render_mode='human')
-state_size = 2**env.observation_space.n
-action_size = 2**env.action_space.n
+state_size = 10000
+action_size = 3
 
 class critic(tf.keras.Model):
     def __init__(self):
@@ -50,8 +49,8 @@ class actor(tf.keras.Model):
 class agent():
     def __init__(self, gamma=0.99):
         self.gamma = gamma
-        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.1)
-        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.1)
+        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.00001)
+        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.00001)
         self.actor = actor()
         self.critic = critic()
 
@@ -131,10 +130,10 @@ def preprocess1(states, actions, rewards, gamma):
     return states, actions, discnt_rewards
 
 
-f = open(current_path + '/ArbiterA2C_2_traces.json', 'w')
-tf.random.set_seed(336699)
+f = open(current_path + '/ACCA2C_v1_traces.json', 'w')
+# tf.random.set_seed(336699)
 agentoo7 = agent()
-steps = 5000
+steps = 4000
 ep_reward = []
 total_avgr = []
 ep_length = []
@@ -190,10 +189,10 @@ for s in range(steps):
             al, cl = agentoo7.learn(states, actions, discnt_rewards)
             print(f"al{al}")
             print(f"cl{cl}")
-            f.write(json.dumps(env.traces) + '\n')
+            f.write(str(env.traces) + '\n')
 
-agentoo7.actor.model.save(current_path + '/ArbiterA2C_2.h5')
-model = tf.keras.models.load_model(current_path + '/ArbiterA2C_2.h5')
+agentoo7.actor.model.save(current_path + '/ACCA2C_v1.h5')
+model = tf.keras.models.load_model(current_path + '/ACCA2C_v1.h5')
 # print(model.predict(list(range(env.observation_space.n))))
 
 ep = [i for i in range(len(total_avgr))]
@@ -202,7 +201,7 @@ plt.title("avg reward Vs episodes")
 plt.xlabel("episodes")
 plt.ylabel("average reward")
 plt.grid(True)
-plt.savefig(current_path + '/ArbiterA2C_2_avg_reward.png')
+plt.savefig(current_path + '/ACCA2C_v1_avg_reward.png')
 plt.show()
 
 ep = [i for i in range(len(total_length))]
@@ -211,83 +210,7 @@ plt.title("avg trace length Vs episodes")
 plt.xlabel("episodes")
 plt.ylabel("avg trace length")
 plt.grid(True)
-plt.savefig(current_path + '/ArbiterA2C_2_avg_trace_length.png')
+plt.savefig(current_path + '/ACCA2C_v1_avg_trace_length.png')
 plt.show()
 
 f.close()
-
-# f = open('./traces.json', 'w')
-# agentoo7 = agent()
-# steps = 2000
-# ep_reward = []
-# total_avgr = []
-# ep_length = []
-# total_length = []
-# for s in range(steps):
-#
-#     done = False
-#     total_reward = 0
-#     all_aloss = []
-#     all_closs = []
-#     rewards = []
-#     states = []
-#     actions = []
-#     cnt = 0
-#
-#     state = env.reset()
-#     state = np.array([state])
-#     states.append(state)
-#     actions.append(env.action)
-#     rewards.append(0)
-#     total_reward += 0
-#
-#     while not done and cnt < 50:
-#
-#         computed = env.take_env()
-#         if not computed:
-#             break
-#
-#         cnt += 1
-#         state = np.array([env.observation])
-#         action = agentoo7.act(state)
-#         next_state, reward, done, _ = env.step(action)
-#         rewards.append(reward)
-#         states.append(state)
-#         # actions.append(tf.one_hot(action, 2, dtype=tf.int32).numpy().tolist())
-#         actions.append(action)
-#         next_state = np.array([next_state])
-#         state = next_state
-#         total_reward += reward
-#
-#         if done and total_reward > 0:
-#             total_reward -= reward
-#             rewards.pop()
-#             states.pop()
-#             actions.pop()
-#             ep_reward.append(total_reward)
-#             avg_reward = np.mean(ep_reward[:])
-#             total_avgr.append(avg_reward)
-#             ep_length.append(len(env.traces[list(env.traces.keys())[0]]))
-#             total_length.append(np.mean(ep_length[:]))
-#             print("total reward after {} steps is {} and avg reward is {}".format(s, total_reward, avg_reward))
-#             f.write(json.dumps(env.traces) + '\n')
-#
-# ep = [i for i in range(len(total_avgr))]
-# plt.plot(ep, total_avgr, 'b')
-# plt.title("avg reward Vs episodes")
-# plt.xlabel("episodes")
-# plt.ylabel("average reward")
-# plt.grid(True)
-# plt.savefig('./ArbiterA2C_2_avg_reward_test.png')
-# plt.show()
-#
-# ep = [i for i in range(len(total_length))]
-# plt.plot(ep, total_length, 'b')
-# plt.title("avg trace length Vs episodes")
-# plt.xlabel("episodes")
-# plt.ylabel("avg trace length")
-# plt.grid(True)
-# plt.savefig('./ArbiterA2C_2_avg_trace_length_test.png')
-# plt.show()
-#
-# f.close()

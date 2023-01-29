@@ -49,8 +49,8 @@ class actor(tf.keras.Model):
 class agent():
     def __init__(self, gamma=0.99):
         self.gamma = gamma
-        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.08)
-        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.08)
+        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.1)
+        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.1)
         self.actor = actor()
         self.critic = critic()
 
@@ -133,7 +133,7 @@ def preprocess1(states, actions, rewards, gamma):
 f = open(current_path + '/DoorInterlockSystemA2C_2_traces.json', 'w')
 tf.random.set_seed(336699)
 agentoo7 = agent()
-steps = 10000
+steps = 100000
 ep_reward = []
 total_avgr = []
 ep_length = []

@@ -142,21 +142,19 @@ class ActorCritic(gym.Env):
         }
         reward = 0
         safety_eval = True
-        if len(self.sys_properties[0]['property']) >= 0:
+        if len(self.sys_properties[0]['property']) > 0:
             phi = stl.parse(self.sys_properties[0]['property'])
             safety_eval = phi(self.traces, quantitative=self.sys_properties[0]['quantitative'])
         liveness_eval = True
         if len(self.sys_properties[1]['property']) > 0:
             phi = stl.parse(self.sys_properties[1]['property'])
             liveness_eval = phi(self.traces, quantitative=self.sys_properties[1]['quantitative'])
-        if safety_eval and len(self.sys_properties[0]['property']) > 0:
-            reward += 1
-        if liveness_eval and len(self.sys_properties[1]['property']) > 0:
-            reward += 2
         if safety_eval and liveness_eval:
+            reward += 1
             done = False
             info['satisfiable'] = True
         elif safety_eval and not liveness_eval:
+            reward += 1
             done = False
             info['satisfiable'] = False
         elif not safety_eval and liveness_eval:
