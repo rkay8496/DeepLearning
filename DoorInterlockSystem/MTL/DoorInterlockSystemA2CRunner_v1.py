@@ -49,8 +49,8 @@ class actor(tf.keras.Model):
 class agent():
     def __init__(self, gamma=0.99):
         self.gamma = gamma
-        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.1)
-        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.1)
+        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.0001)
+        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.0001)
         self.actor = actor()
         self.critic = critic()
 

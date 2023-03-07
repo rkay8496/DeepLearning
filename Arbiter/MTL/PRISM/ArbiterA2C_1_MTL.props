@@ -1,0 +1,22 @@
+const int N;
+
+filter(avg, R{"step"}=? [ F "fail" ], "s0")
+
+filter(avg, P=? [ F<=N "fail" ], "s0")
+
+filter(avg, R{"step"}=? [ F !r0&g0 ], "s0")
+
+filter(avg, R{"step"}=? [ F !r1&g1 ], "s0")
+
+filter(avg, R{"step"}=? [ F r0&g0 ], "s0")
+
+filter(avg, R{"step"}=? [ F r1&g1 ], "s0")
+
+filter(avg, P=? [ F<=N !r0&g0 ], "s0")
+
+filter(avg, P=? [ F<=N !r1&g1 ], "s0")
+
+filter(avg, P=? [ F<=N r0&g0 ], "s0")
+
+filter(avg, P=? [ F<=N r1&g1 ], "s0")
+

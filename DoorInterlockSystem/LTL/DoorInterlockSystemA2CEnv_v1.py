@@ -22,13 +22,10 @@ class ActorCritic(gym.Env):
                             'G((opened & close) -> Xpartially) & '
                             'G((partially & open) -> Xopened) & '
                             'G((partially & close) -> Xclosed) & '
-                            'G((closed & ~partially & ~opened) | (~closed & partially & ~opened) | '
-                            '(~closed & ~partially & opened)) & '
                             'G(closed -> (Xopen | Xnone)) & ' # request
                             'G(opened -> (Xclose | Xnone)) & '
                             'G((open & X~opened) -> Xopen) & '
                             'G((close & X~closed) -> Xclose) & '
-                            'G((none & ~close & ~open) | (~none & close & ~open) | (~none & ~close & open)) & '
                             'G(off -> X~power) & '  # power
                             'G(on -> Xpower) & '
                             'G(nothing -> (Xpower <-> power)))',
@@ -54,13 +51,12 @@ class ActorCritic(gym.Env):
             {
                 'category': 'safety',
                 'property': '(G((Xclosed & Xclose) -> Xon) & '
-                            'G(Xnone -> Xnothing) & '
-                            'G((nothing & ~off & ~on) | (~nothing & off & ~on) | (~nothing & ~off & on)))',
+                            'G(Xnone -> Xnothing))',
                 'quantitative': False
             },
             {
                 'category': 'liveness',
-                'property': '(G(open -> (closed U off)))',
+                'property': '(G(open -> X(closed U off)))',
                 'quantitative': False
             },
         ]
