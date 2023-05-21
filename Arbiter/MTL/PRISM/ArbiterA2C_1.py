@@ -34,8 +34,9 @@ def convert_to_traces(lines):
                 'is_dummy': False
             }
             path.append(item)
-        path.append(dummy)
-        path.append(item)
+        if obj['aux0']:
+            path.append(dummy)
+            path.append(item)
         converted.append(path)
     num = 0
     find = False
@@ -92,7 +93,7 @@ def calculate_probabilities(converted):
 
 
 def generate_prism_model(state_list):
-    f = open('./ArbiterA2C_1_MTL.prism', 'w')
+    f = open('ArbiterA2C_1_MTL.prism', 'w')
     data = 'dtmc\n' \
             '\n' \
             'module Arbiter\n' \

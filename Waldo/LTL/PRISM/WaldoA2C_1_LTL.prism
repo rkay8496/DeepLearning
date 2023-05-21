@@ -1,0 +1,36 @@
+dtmc
+
+module Waldo
+	
+	waldo : bool init false;
+	r1 : bool init true;
+	r2 : bool init false;
+	r3 : bool init false;
+	r4 : bool init false;
+
+	[] (waldo = false) & (r1 = true) & (r2 = false) & (r3 = false) & (r4 = false) -> 59075/60114:(waldo' = false) & (r1' = true) & (r2' = false) & (r3' = false) & (r4' = false) + 44/60114:(waldo' = false) & (r1' = false) & (r2' = false) & (r3' = false) & (r4' = true) + 74/60114:(waldo' = false) & (r1' = false) & (r2' = true) & (r3' = false) & (r4' = false) + 413/60114:(waldo' = false) & (r1' = false) & (r2' = false) & (r3' = false) & (r4' = false) + 508/60114:(waldo' = false) & (r1' = false) & (r2' = false) & (r3' = true) & (r4' = false);
+	[] (waldo = false) & (r1 = false) & (r2 = false) & (r3 = false) & (r4 = true) -> 17/45:(waldo' = true) & (r1' = true) & (r2' = false) & (r3' = false) & (r4' = false) + 4/45:(waldo' = false) & (r1' = false) & (r2' = true) & (r3' = false) & (r4' = false) + 3/45:(waldo' = true) & (r1' = false) & (r2' = false) & (r3' = true) & (r4' = false) + 1/45:(waldo' = false) & (r1' = false) & (r2' = false) & (r3' = true) & (r4' = false) + 1/45:(waldo' = false) & (r1' = false) & (r2' = false) & (r3' = false) & (r4' = false) + 19/45:(waldo' = false) & (r1' = true) & (r2' = false) & (r3' = false) & (r4' = false);
+	[] (waldo = true) & (r1 = true) & (r2 = false) & (r3 = false) & (r4 = false) -> 49/49:(waldo' = false) & (r1' = false) & (r2' = false) & (r3' = false) & (r4' = false);
+	[] (waldo = false) & (r1 = false) & (r2 = false) & (r3 = false) & (r4 = false) -> 49/985:(waldo' = true) & (r1' = true) & (r2' = false) & (r3' = false) & (r4' = false) + 8/985:(waldo' = true) & (r1' = false) & (r2' = false) & (r3' = true) & (r4' = false) + 4/985:(waldo' = false) & (r1' = false) & (r2' = true) & (r3' = false) & (r4' = false) + 1/985:(waldo' = false) & (r1' = false) & (r2' = false) & (r3' = false) & (r4' = true) + 2/985:(waldo' = true) & (r1' = false) & (r2' = false) & (r3' = false) & (r4' = true) + 413/985:(waldo' = false) & (r1' = true) & (r2' = false) & (r3' = false) & (r4' = false) + 508/985:(waldo' = false) & (r1' = false) & (r2' = false) & (r3' = true) & (r4' = false);
+	[] (waldo = false) & (r1 = false) & (r2 = true) & (r3 = false) & (r4 = false) -> 5/82:(waldo' = true) & (r1' = false) & (r2' = false) & (r3' = true) & (r4' = false) + 4/82:(waldo' = false) & (r1' = false) & (r2' = false) & (r3' = false) & (r4' = false) + 32/82:(waldo' = true) & (r1' = true) & (r2' = false) & (r3' = false) & (r4' = false) + 3/82:(waldo' = false) & (r1' = false) & (r2' = true) & (r3' = false) & (r4' = false) + 34/82:(waldo' = false) & (r1' = true) & (r2' = false) & (r3' = false) & (r4' = false) + 1/82:(waldo' = false) & (r1' = false) & (r2' = false) & (r3' = false) & (r4' = true) + 1/82:(waldo' = true) & (r1' = false) & (r2' = true) & (r3' = false) & (r4' = false) + 1/82:(waldo' = false) & (r1' = false) & (r2' = false) & (r3' = true) & (r4' = false) + 1/82:(waldo' = true) & (r1' = false) & (r2' = false) & (r3' = false) & (r4' = true);
+	[] (waldo = true) & (r1 = false) & (r2 = false) & (r3 = true) & (r4 = false) -> 8/8:(waldo' = false) & (r1' = false) & (r2' = false) & (r3' = false) & (r4' = false);
+	[] (waldo = false) & (r1 = false) & (r2 = false) & (r3 = true) & (r4 = false) -> 1/510:(waldo' = false) & (r1' = false) & (r2' = true) & (r3' = false) & (r4' = false) + 1/510:(waldo' = false) & (r1' = true) & (r2' = false) & (r3' = false) & (r4' = false) + 508/510:(waldo' = false) & (r1' = false) & (r2' = false) & (r3' = false) & (r4' = false);
+	[] (waldo = true) & (r1 = false) & (r2 = true) & (r3 = false) & (r4 = false) -> 1/1:(waldo' = true) & (r1' = false) & (r2' = false) & (r3' = false) & (r4' = true);
+	[] (waldo = true) & (r1 = false) & (r2 = false) & (r3 = false) & (r4 = true) -> 2/2:(waldo' = false) & (r1' = false) & (r2' = false) & (r3' = false) & (r4' = false);
+endmodule
+
+label "safe" = ((waldo = false) & (r1 = true) & (r2 = false) & (r3 = false) & (r4 = false)) | ((waldo = false) & (r1 = false) & (r2 = false) & (r3 = false) & (r4 = true)) | ((waldo = true) & (r1 = true) & (r2 = false) & (r3 = false) & (r4 = false)) | ((waldo = false) & (r1 = false) & (r2 = false) & (r3 = false) & (r4 = false)) | ((waldo = false) & (r1 = false) & (r2 = true) & (r3 = false) & (r4 = false)) | ((waldo = true) & (r1 = false) & (r2 = false) & (r3 = true) & (r4 = false)) | ((waldo = false) & (r1 = false) & (r2 = false) & (r3 = true) & (r4 = false)) | ((waldo = true) & (r1 = false) & (r2 = true) & (r3 = false) & (r4 = false)) | ((waldo = true) & (r1 = false) & (r2 = false) & (r3 = false) & (r4 = true));
+label "fail" = ((waldo = true) & (r1 = true) & (r2 = false) & (r3 = false) & (r4 = false)) | ((waldo = true) & (r1 = false) & (r2 = false) & (r3 = true) & (r4 = false)) | ((waldo = true) & (r1 = false) & (r2 = false) & (r3 = false) & (r4 = true));
+label "s0" = (waldo = false) & (r1 = true) & (r2 = false) & (r3 = false) & (r4 = false);
+label "s1" = (waldo = false) & (r1 = false) & (r2 = false) & (r3 = false) & (r4 = true);
+label "s2" = (waldo = true) & (r1 = true) & (r2 = false) & (r3 = false) & (r4 = false);
+label "s4" = (waldo = false) & (r1 = false) & (r2 = true) & (r3 = false) & (r4 = false);
+label "s5" = (waldo = true) & (r1 = false) & (r2 = false) & (r3 = true) & (r4 = false);
+label "s6" = (waldo = false) & (r1 = false) & (r2 = false) & (r3 = true) & (r4 = false);
+label "s7" = (waldo = true) & (r1 = false) & (r2 = true) & (r3 = false) & (r4 = false);
+label "s8" = (waldo = true) & (r1 = false) & (r2 = false) & (r3 = false) & (r4 = true);
+label "dummy3" = (waldo = false) & (r1 = false) & (r2 = false) & (r3 = false) & (r4 = false);
+
+rewards "step"
+	[] true : 1;
+endrewards

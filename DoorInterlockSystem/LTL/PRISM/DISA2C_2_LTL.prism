@@ -1,0 +1,33 @@
+dtmc
+
+module DIS
+	
+	closed : bool init true;
+	partially : bool init false;
+	open : bool init false;
+	power : bool init true;
+	off : bool init false;
+	on : bool init true;
+
+	[] (closed = true) & (partially = false) & (open = false) & (power = true) & (off = false) & (on = true) -> 25/1826:(closed' = true) & (partially' = false) & (open' = false) & (power' = true) & (off' = true) & (on' = false) + 5/1826:(closed' = false) & (partially' = true) & (open' = false) & (power' = true) & (off' = true) & (on' = false) + 586/1826:(closed' = true) & (partially' = false) & (open' = false) & (power' = true) & (off' = false) & (on' = true) + 4/1826:(closed' = false) & (partially' = false) & (open' = true) & (power' = true) & (off' = true) & (on' = false) + 570/1826:(closed' = false) & (partially' = true) & (open' = false) & (power' = true) & (off' = false) & (on' = true) + 619/1826:(closed' = false) & (partially' = false) & (open' = true) & (power' = true) & (off' = false) & (on' = true) + 17/1826:(closed' = false) & (partially' = false) & (open' = false) & (power' = false) & (off' = false) & (on' = false);
+	[] (closed = true) & (partially = false) & (open = false) & (power = true) & (off = true) & (on = false) -> 42/42:(closed' = false) & (partially' = false) & (open' = false) & (power' = false) & (off' = false) & (on' = false);
+	[] (closed = false) & (partially = false) & (open = false) & (power = false) & (off = false) & (on = false) -> 42/100:(closed' = true) & (partially' = false) & (open' = false) & (power' = true) & (off' = true) & (on' = false) + 10/100:(closed' = false) & (partially' = true) & (open' = false) & (power' = true) & (off' = true) & (on' = false) + 6/100:(closed' = false) & (partially' = false) & (open' = true) & (power' = true) & (off' = true) & (on' = false) + 10/100:(closed' = false) & (partially' = true) & (open' = false) & (power' = true) & (off' = false) & (on' = true) + 17/100:(closed' = true) & (partially' = false) & (open' = false) & (power' = true) & (off' = false) & (on' = true) + 15/100:(closed' = false) & (partially' = false) & (open' = true) & (power' = true) & (off' = false) & (on' = true);
+	[] (closed = false) & (partially = true) & (open = false) & (power = true) & (off = true) & (on = false) -> 10/10:(closed' = false) & (partially' = false) & (open' = false) & (power' = false) & (off' = false) & (on' = false);
+	[] (closed = false) & (partially = false) & (open = true) & (power = true) & (off = true) & (on = false) -> 6/6:(closed' = false) & (partially' = false) & (open' = false) & (power' = false) & (off' = false) & (on' = false);
+	[] (closed = false) & (partially = true) & (open = false) & (power = true) & (off = false) & (on = true) -> 2/1692:(closed' = false) & (partially' = true) & (open' = false) & (power' = true) & (off' = true) & (on' = false) + 578/1692:(closed' = false) & (partially' = true) & (open' = false) & (power' = true) & (off' = false) & (on' = true) + 538/1692:(closed' = false) & (partially' = false) & (open' = true) & (power' = true) & (off' = false) & (on' = true) + 558/1692:(closed' = true) & (partially' = false) & (open' = false) & (power' = true) & (off' = false) & (on' = true) + 5/1692:(closed' = true) & (partially' = false) & (open' = false) & (power' = true) & (off' = true) & (on' = false) + 1/1692:(closed' = false) & (partially' = false) & (open' = true) & (power' = true) & (off' = true) & (on' = false) + 10/1692:(closed' = false) & (partially' = false) & (open' = false) & (power' = false) & (off' = false) & (on' = false);
+	[] (closed = false) & (partially = false) & (open = true) & (power = true) & (off = false) & (on = true) -> 3/1760:(closed' = false) & (partially' = true) & (open' = false) & (power' = true) & (off' = true) & (on' = false) + 603/1760:(closed' = false) & (partially' = false) & (open' = true) & (power' = true) & (off' = false) & (on' = true) + 544/1760:(closed' = false) & (partially' = true) & (open' = false) & (power' = true) & (off' = false) & (on' = true) + 582/1760:(closed' = true) & (partially' = false) & (open' = false) & (power' = true) & (off' = false) & (on' = true) + 1/1760:(closed' = false) & (partially' = false) & (open' = true) & (power' = true) & (off' = true) & (on' = false) + 12/1760:(closed' = true) & (partially' = false) & (open' = false) & (power' = true) & (off' = true) & (on' = false) + 15/1760:(closed' = false) & (partially' = false) & (open' = false) & (power' = false) & (off' = false) & (on' = false);
+endmodule
+
+label "safe" = ((closed = true) & (partially = false) & (open = false) & (power = true) & (off = false) & (on = true)) | ((closed = true) & (partially = false) & (open = false) & (power = true) & (off = true) & (on = false)) | ((closed = false) & (partially = false) & (open = false) & (power = false) & (off = false) & (on = false)) | ((closed = false) & (partially = true) & (open = false) & (power = true) & (off = true) & (on = false)) | ((closed = false) & (partially = false) & (open = true) & (power = true) & (off = true) & (on = false)) | ((closed = false) & (partially = true) & (open = false) & (power = true) & (off = false) & (on = true)) | ((closed = false) & (partially = false) & (open = true) & (power = true) & (off = false) & (on = true));
+label "fail" = ((closed = true) & (partially = false) & (open = false) & (power = true) & (off = true) & (on = false)) | ((closed = false) & (partially = true) & (open = false) & (power = true) & (off = true) & (on = false)) | ((closed = false) & (partially = false) & (open = true) & (power = true) & (off = true) & (on = false));
+label "s0" = (closed = true) & (partially = false) & (open = false) & (power = true) & (off = false) & (on = true);
+label "s1" = (closed = true) & (partially = false) & (open = false) & (power = true) & (off = true) & (on = false);
+label "s3" = (closed = false) & (partially = true) & (open = false) & (power = true) & (off = true) & (on = false);
+label "s4" = (closed = false) & (partially = false) & (open = true) & (power = true) & (off = true) & (on = false);
+label "s5" = (closed = false) & (partially = true) & (open = false) & (power = true) & (off = false) & (on = true);
+label "s6" = (closed = false) & (partially = false) & (open = true) & (power = true) & (off = false) & (on = true);
+label "dummy2" = (closed = false) & (partially = false) & (open = false) & (power = false) & (off = false) & (on = false);
+
+rewards "step"
+	[] true : 1;
+endrewards

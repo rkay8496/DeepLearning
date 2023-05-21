@@ -17,16 +17,15 @@ class ActorCritic(gym.Env):
             {
 
                 'category': 'safety',
-                'property': '(G((closed & open) -> Xpartially) & '
-                            'G((opened & close) -> Xpartially) & '
-                            'G((partially & open) -> Xopened) & '
-                            'G((partially & close) -> Xclosed) & '
-                            'G(Xclosed -> X~obstacle))',
+                'property': '(G(Xstuck -> Xemergency) & '
+                            'G(Xemergency -> Xforce) & '
+                            'G((obstacle & Xobstacle & XXobstacle) -> XXstuck))',
                 'quantitative': False
             },
             {
                 'category': 'liveness',
-                'property': '',
+                'property': '(G((closed & open) -> Fopened) & '
+                            'G((opened & close) -> Fclosed))',
                 'quantitative': False
             },
         ]
@@ -43,13 +42,15 @@ class ActorCritic(gym.Env):
         self.sys_properties = [
             {
                 'category': 'safety',
-                'property': '(G(Xstandstill -> Xidle))',
+                'property': '(G(X~arrived -> Xclose) & '
+                            'G(Xmoving -> Xclose))',
                 'quantitative': False
             },
             {
                 'category': 'liveness',
-                'property': '(G(getonandoff -> F[0, 2]open) & '
-                            'G(pickup -> F[0, 2]close))',
+                'property': '(G((arrived & closed) -> Fopen) & '
+                            'G((arrived & opened) -> Fclose) & '
+                            'G((arrived & force) -> F[0, 2]open))',
                 'quantitative': True
             },
         ]
@@ -65,9 +66,9 @@ class ActorCritic(gym.Env):
 
         self.specification = '(' + self.env_specification + ' -> ' + self.sys_specification + ')'
 
-        self.observation_space = MultiDiscrete([3, 3, 2])
-        self.action_space = Discrete(3)
-        self.observation = [0, 0, 0]
+        self.observation_space = MultiDiscrete([2, 2, 2, 2, 2, 2, 2])
+        self.action_space = Discrete(2)
+        self.observation = [0, 0, 0, 0, 0, 0, 0]
         self.action = 0
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
@@ -79,13 +80,14 @@ class ActorCritic(gym.Env):
     def take_env(self):
         def compute_observation():
             obs = self.observation_space.sample()
-            self.traces['standstill'].append((len(self.traces['standstill']), True if obs[0] == 0 else False))
-            self.traces['getonandoff'].append((len(self.traces['getonandoff']), True if obs[0] == 1 else False))
-            self.traces['pickup'].append((len(self.traces['pickup']), True if obs[0] == 2 else False))
-            self.traces['closed'].append((len(self.traces['closed']), True if obs[1] == 0 else False))
-            self.traces['partially'].append((len(self.traces['partially']), True if obs[1] == 1 else False))
-            self.traces['opened'].append((len(self.traces['opened']), True if obs[1] == 2 else False))
-            self.traces['obstacle'].append((len(self.traces['obstacle']), True if obs[2] == 1 else False))
+            self.traces['force'].append((len(self.traces['force']), True if obs[0] == 1 else False))
+            self.traces['arrived'].append((len(self.traces['arrived']), True if obs[1] == 1 else False))
+            self.traces['moving'].append((len(self.traces['moving']), True if obs[2] == 1 else False))
+            self.traces['closed'].append((len(self.traces['closed']), True if obs[3] == 0 else False))
+            self.traces['opened'].append((len(self.traces['opened']), True if obs[3] == 1 else False))
+            self.traces['stuck'].append((len(self.traces['stuck']), True if obs[4] == 1 else False))
+            self.traces['obstacle'].append((len(self.traces['obstacle']), True if obs[5] == 1 else False))
+            self.traces['emergency'].append((len(self.traces['emergency']), True if obs[6] == 1 else False))
 
             safety_eval = True
             if len(self.env_properties[0]['property']) > 0:
@@ -99,13 +101,14 @@ class ActorCritic(gym.Env):
                 self.observation = obs
                 return True
             else:
-                self.traces['standstill'].pop(len(self.traces['standstill']) - 1)
-                self.traces['getonandoff'].pop(len(self.traces['getonandoff']) - 1)
-                self.traces['pickup'].pop(len(self.traces['pickup']) - 1)
+                self.traces['force'].pop(len(self.traces['force']) - 1)
+                self.traces['arrived'].pop(len(self.traces['arrived']) - 1)
+                self.traces['moving'].pop(len(self.traces['moving']) - 1)
                 self.traces['closed'].pop(len(self.traces['closed']) - 1)
-                self.traces['partially'].pop(len(self.traces['partially']) - 1)
                 self.traces['opened'].pop(len(self.traces['opened']) - 1)
+                self.traces['stuck'].pop(len(self.traces['stuck']) - 1)
                 self.traces['obstacle'].pop(len(self.traces['obstacle']) - 1)
+                self.traces['emergency'].pop(len(self.traces['emergency']) - 1)
                 return False
 
         cnt = 1
@@ -113,15 +116,15 @@ class ActorCritic(gym.Env):
         while not computed:
             computed = compute_observation()
             cnt += 1
-            if cnt == 100 and not computed:
+            if cnt == 1000 and not computed:
                 break
+        self.traces['aux0'].append((len(self.traces['aux0']), computed))
         return computed
 
     def step(self, action):
         self.action = action
-        self.traces['idle'].append((len(self.traces['idle']), True if action == 0 else False))
+        self.traces['close'].append((len(self.traces['close']), True if action == 0 else False))
         self.traces['open'].append((len(self.traces['open']), True if action == 1 else False))
-        self.traces['close'].append((len(self.traces['close']), True if action == 2 else False))
 
         obs = np.array(self.observation)
 
@@ -156,16 +159,17 @@ class ActorCritic(gym.Env):
 
     def reset(self):
         self.traces = {
-            'standstill': [(0, True)],
-            'getonandoff': [(0, False)],
-            'pickup': [(0, False)],
+            'force': [(0, False)],
+            'arrived': [(0, True)],
+            'moving': [(0, False)],
             'closed': [(0, True)],
-            'partially': [(0, False)],
             'opened': [(0, False)],
+            'stuck': [(0, False)],
             'obstacle': [(0, False)],
-            'idle': [(0, True)],
-            'open': [(0, False)],
+            'emergency': [(0, False)],
             'close': [(0, False)],
+            'open': [(0, True)],
+            'aux0': [(0, True)],
         }
         return np.array(self.observation)
 

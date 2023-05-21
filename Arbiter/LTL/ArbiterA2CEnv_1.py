@@ -23,8 +23,8 @@ class ActorCritic(gym.Env):
             },
             {
                 'category': 'liveness',
-                'property': '(G((r0 & g0) -> F~r0) & '
-                            'G((r1 & g1) -> F~r1))',
+                'property': '(G((r0 & g0) -> F(~r0 & ~g0)) & '
+                            'G((r1 & g1) -> F(~r1 & ~g1)))',
                 'quantitative': False
             },
         ]
@@ -46,8 +46,8 @@ class ActorCritic(gym.Env):
             },
             {
                 'category': 'liveness',
-                'property': '(G((r0 & ~g0) -> (r0 U g0)) & '
-                            'G((r1 & ~g1) -> (r1 U g1)))',
+                'property': '(G((r0 & ~g0) -> Fg0) & '
+                            'G((r1 & ~g1) -> Fg1))',
                 'quantitative': False
             },
         ]
@@ -103,6 +103,7 @@ class ActorCritic(gym.Env):
             cnt += 1
             if cnt == 20 and not computed:
                 break
+        self.traces['aux0'].append((len(self.traces['aux0']), computed))
         return computed
 
     def step(self, action):
@@ -148,6 +149,7 @@ class ActorCritic(gym.Env):
             'r1': [(0, False)],
             'g0': [(0, False)],
             'g1': [(0, False)],
+            'aux0': [(0, True)],
         }
         return np.array(self.observation)
 

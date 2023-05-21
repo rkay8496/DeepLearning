@@ -134,7 +134,7 @@ def preprocess1(states, actions, rewards, gamma):
 f = open(current_path + '/ArbiterA2C_1_LTL_traces.json', 'w')
 tf.random.set_seed(336699)
 agentoo7 = agent()
-steps = 1000
+steps = 250
 ep_reward = []
 total_avgr = []
 ep_length = []
@@ -161,6 +161,18 @@ for s in range(steps):
 
         computed = env.take_env()
         if not computed:
+            if total_reward > 0:
+                ep_reward.append(total_reward)
+                avg_reward = np.mean(ep_reward[:])
+                total_avgr.append(avg_reward)
+                ep_length.append(len(env.traces[list(env.traces.keys())[0]]))
+                total_length.append(np.mean(ep_length[:]))
+                print("total reward after {} steps is {} and avg reward is {}".format(s, total_reward, avg_reward))
+                states, actions, discnt_rewards = preprocess1(states, actions, rewards, 1)
+                al, cl = agentoo7.learn(states, actions, discnt_rewards)
+                print(f"al{al}")
+                print(f"cl{cl}")
+                f.write(json.dumps(env.traces) + '\n')
             break
 
         cnt += 1

@@ -17,37 +17,38 @@ def convert_to_traces(lines):
         path = []
         dummy = {
             'No': -1,
-            'standstill': False,
-            'getonandoff': False,
-            'pickup': False,
+            'force': False,
+            'arrived': False,
+            'moving': False,
             'closed': False,
-            'partially': False,
             'opened': False,
+            'stuck': False,
             'obstacle': False,
-            'idle': False,
-            'open': False,
+            'emergency': False,
             'close': False,
+            'open': False,
             'is_dummy': True,
         }
         item = {}
-        for i in range(len(obj['standstill'])):
+        for i in range(len(obj['force'])):
             item = {
                 'No': -1,
-                'standstill': obj['standstill'][i][1],
-                'getonandoff': obj['getonandoff'][i][1],
-                'pickup': obj['pickup'][i][1],
+                'force': obj['force'][i][1],
+                'arrived': obj['arrived'][i][1],
+                'moving': obj['moving'][i][1],
                 'closed': obj['closed'][i][1],
-                'partially': obj['partially'][i][1],
                 'opened': obj['opened'][i][1],
+                'stuck': obj['stuck'][i][1],
                 'obstacle': obj['obstacle'][i][1],
-                'idle': obj['idle'][i][1],
-                'open': obj['open'][i][1],
+                'emergency': obj['emergency'][i][1],
                 'close': obj['close'][i][1],
+                'open': obj['open'][i][1],
                 'is_dummy': False
             }
             path.append(item)
-        path.append(dummy)
-        path.append(item)
+        if obj['aux0']:
+            path.append(dummy)
+            path.append(item)
         converted.append(path)
     num = 0
     find = False
@@ -60,11 +61,12 @@ def convert_to_traces(lines):
                 for l in k:
                     if l['is_dummy'] and j['is_dummy']:
                         l['No'] = j['No']
-                    elif l['standstill'] == j['standstill'] and l['getonandoff'] == j['getonandoff'] and \
-                            l['pickup'] == j['pickup'] and l['closed'] == j['closed'] and \
-                            l['partially'] == j['partially'] and l['opened'] == j['opened'] and \
-                            l['obstacle'] == j['obstacle'] and l['idle'] == j['idle'] and \
-                            l['open'] == j['open'] and l['close'] == j['close']:
+                    elif l['force'] == j['force'] and l['arrived'] == j['arrived'] and \
+                            l['moving'] == j['moving'] and \
+                            l['closed'] == j['closed'] and l['opened'] == j['opened'] and \
+                            l['stuck'] == j['stuck'] and \
+                            l['obstacle'] == j['obstacle'] and l['emergency'] == j['emergency'] and \
+                            l['close'] == j['close'] and l['open'] == j['open']:
                         l['No'] = j['No']
     return converted
 
@@ -113,76 +115,83 @@ def generate_prism_model(state_list):
             '\n' \
             'module PSD\n' \
             '\t\n' \
-            '\tstandstill : bool init true;\n' \
-            '\tgetonandoff : bool init false;\n' \
-            '\tpickup : bool init false;\n' \
+            '\tforce : bool init false;\n' \
+            '\tarrived : bool init true;\n' \
+            '\tmoving : bool init false;\n' \
             '\tclosed : bool init true;\n' \
-            '\tpartially : bool init false;\n' \
             '\topened : bool init false;\n' \
+            '\tstuck : bool init false;\n' \
             '\tobstacle : bool init false;\n' \
-            '\tidle : bool init true;\n' \
-            '\topen : bool init false;\n' \
+            '\temergency : bool init false;\n' \
             '\tclose : bool init false;\n' \
-            '\n'
+            '\topen : bool init true;\n' \
+           '\n'
     for state in state_list:
         data += '\t[] '
-        data += '(standstill = ' + str(state['standstill']).lower() + ') & (getonandoff = ' + str(state['getonandoff']).lower() + \
-                ') & (pickup = ' + str(state['pickup']).lower() + ') & (closed = ' + str(state['closed']).lower() + \
-                ') & (partially = ' + str(state['partially']).lower() + ') & (opened = ' + str(state['opened']).lower() + \
-                ') & (obstacle = ' + str(state['obstacle']).lower() + ') & (idle = ' + str(state['idle']).lower() + \
-                ') & (open = ' + str(state['open']).lower() + ') & (close = ' + str(state['close']).lower() + ') -> '
+        data += '(force = ' + str(state['force']).lower() + ') & (arrived = ' + str(state['arrived']).lower() + \
+                ') & (moving = ' + str(state['moving']).lower() + \
+                ') & (closed = ' + str(state['closed']).lower() + ') & (opened = ' + str(state['opened']).lower() + \
+                ') & (stuck = ' + str(state['stuck']).lower() + \
+                ') & (obstacle = ' + str(state['obstacle']).lower() + ') & (emergency = ' + str(state['emergency']).lower() + \
+                ') & (close = ' + str(state['close']).lower() + ') & (open = ' + str(state['open']).lower() + ') -> '
         if len(state['next']) > 0:
             for next in state['next']:
-                data += str(next['probability']) + ':(standstill\' = ' + str(next['standstill']).lower() + ') & (getonandoff\' = ' + str(next['getonandoff']).lower() + \
-                        ') & (pickup\' = ' + str(next['pickup']).lower() + ') & (closed\' = ' + str(next['closed']).lower() + \
-                        ') & (partially\' = ' + str(next['partially']).lower() + ') & (opened\' = ' + str(next['opened']).lower() + \
-                        ') & (obstacle\' = ' + str(next['obstacle']).lower() + ') & (idle\' = ' + str(next['idle']).lower() + \
-                        ') & (open\' = ' + str(next['open']).lower() + ') & (close\' = ' + str(next['close']).lower() + ') + '
+                data += str(next['probability']) + ':(force\' = ' + str(next['force']).lower() + ') & (arrived\' = ' + str(next['arrived']).lower() + \
+                        ') & (moving\' = ' + str(next['moving']).lower() + \
+                        ') & (closed\' = ' + str(next['closed']).lower() + ') & (opened\' = ' + str(next['opened']).lower() + \
+                        ') & (stuck\' = ' + str(next['stuck']).lower() + \
+                        ') & (obstacle\' = ' + str(next['obstacle']).lower() + ') & (emergency\' = ' + str(next['emergency']).lower() + \
+                        ') & (close\' = ' + str(next['close']).lower() + ') & (open\' = ' + str(next['open']).lower() + ') + '
             data = data[:-3]
             data += ';\n'
         else:
-            data += '1:(standstill\' = ' + str(state['standstill']).lower() + ') & (getonandoff\' = ' + str(state['getonandoff']).lower() +  \
-                    ') & (pickup\' = ' + str(state['pickup']).lower() + ') & (closed\' = ' + str(state['closed']).lower() + \
-                    ') & (partially\' = ' + str(state['partially']).lower() + ') & (opened\' = ' + str(state['opened']).lower() + \
-                    ') & (obstacle\' = ' + str(state['obstacle']).lower() + ') & (idle\' = ' + str(state['idle']).lower() + \
-                    ') & (open\' = ' + str(state['open']).lower() + ') & (close\' = ' + str(state['close']).lower() + ')'
+            data += '1:(force\' = ' + str(state['force']).lower() + ') & (arrived\' = ' + str(state['arrived']).lower() +  \
+                    ') & (moving\' = ' + str(state['moving']).lower() + \
+                    ') & (closed\' = ' + str(state['closed']).lower() + ') & (opened\' = ' + str(state['opened']).lower() + \
+                    ') & (stuck\' = ' + str(state['stuck']).lower() + \
+                    ') & (obstacle\' = ' + str(state['obstacle']).lower() + ') & (emergency\' = ' + str(state['emergency']).lower() + \
+                    ') & (close\' = ' + str(state['close']).lower() + ') & (open\' = ' + str(state['open']).lower() + ')'
             data += ';\n'
     data += 'endmodule\n'
     data += '\n'
     data += 'label \"safe\" = '
     for state in state_list:
         if len(state['next']) > 0:
-            data += '((standstill = ' + str(state['standstill']).lower() + ') & (getonandoff = ' + str(state['getonandoff']).lower() +  \
-                    ') & (pickup = ' + str(state['pickup']).lower() + ') & (closed = ' + str(state['closed']).lower() + \
-                    ') & (partially = ' + str(state['partially']).lower() + ') & (opened = ' + str(state['opened']).lower() + \
-                    ') & (obstacle = ' + str(state['obstacle']).lower() + ') & (idle = ' + str(state['idle']).lower() + \
-                    ') & (open = ' + str(state['open']).lower() + ') & (close = ' + str(state['close']).lower() + ')) | '
+            data += '((force = ' + str(state['force']).lower() + ') & (arrived = ' + str(state['arrived']).lower() + \
+                ') & (moving = ' + str(state['moving']).lower() + \
+                ') & (closed = ' + str(state['closed']).lower() + ') & (opened = ' + str(state['opened']).lower() + \
+                ') & (stuck = ' + str(state['stuck']).lower() + \
+                ') & (obstacle = ' + str(state['obstacle']).lower() + ') & (emergency = ' + str(state['emergency']).lower() + \
+                ') & (close = ' + str(state['close']).lower() + ') & (open = ' + str(state['open']).lower() + ')) | '
     data = data[:-3]
     data += ';\n'
     data += 'label \"fail\" = '
     for state in state_list:
         if len(state['next']) == 1 and state['next'][0]['is_dummy']:
-            data += '((standstill = ' + str(state['standstill']).lower() + ') & (getonandoff = ' + str(state['getonandoff']).lower() +  \
-                    ') & (pickup = ' + str(state['pickup']).lower() + ') & (closed = ' + str(state['closed']).lower() + \
-                    ') & (partially = ' + str(state['partially']).lower() + ') & (opened = ' + str(state['opened']).lower() + \
-                    ') & (obstacle = ' + str(state['obstacle']).lower() + ') & (idle = ' + str(state['idle']).lower() + \
-                    ') & (open = ' + str(state['open']).lower() + ') & (close = ' + str(state['close']).lower() + ')) | '
+            data += '((force = ' + str(state['force']).lower() + ') & (arrived = ' + str(state['arrived']).lower() + \
+                ') & (moving = ' + str(state['moving']).lower() + \
+                ') & (closed = ' + str(state['closed']).lower() + ') & (opened = ' + str(state['opened']).lower() + \
+                ') & (stuck = ' + str(state['stuck']).lower() + \
+                ') & (obstacle = ' + str(state['obstacle']).lower() + ') & (emergency = ' + str(state['emergency']).lower() + \
+                ') & (close = ' + str(state['close']).lower() + ') & (open = ' + str(state['open']).lower() + ')) | '
     data = data[:-3]
     data += ';\n'
     for state in state_list:
         if not state['is_dummy']:
-            data += 'label \"s' + str(state['No']) + '\" = ' + '(standstill = ' + str(state['standstill']).lower() + ') & (getonandoff = ' + str(state['getonandoff']).lower() +  \
-                        ') & (pickup = ' + str(state['pickup']).lower() + ') & (closed = ' + str(state['closed']).lower() + \
-                        ') & (partially = ' + str(state['partially']).lower() + ') & (opened = ' + str(state['opened']).lower() + \
-                        ') & (obstacle = ' + str(state['obstacle']).lower() + ') & (idle = ' + str(state['idle']).lower() + \
-                        ') & (open = ' + str(state['open']).lower() + ') & (close = ' + str(state['close']).lower() + ');\n'
+            data += 'label \"s' + str(state['No']) + '\" = ' + '(force = ' + str(state['force']).lower() + ') & (arrived = ' + str(state['arrived']).lower() + \
+                ') & (moving = ' + str(state['moving']).lower() + \
+                ') & (closed = ' + str(state['closed']).lower() + ') & (opened = ' + str(state['opened']).lower() + \
+                ') & (stuck = ' + str(state['stuck']).lower() + \
+                ') & (obstacle = ' + str(state['obstacle']).lower() + ') & (emergency = ' + str(state['emergency']).lower() + \
+                ') & (close = ' + str(state['close']).lower() + ') & (open = ' + str(state['open']).lower() + ');\n'
     for state in state_list:
         if state['is_dummy']:
-            data += 'label \"dummy' + str(state['No']) + '\" = ' + '(standstill = ' + str(state['standstill']).lower() + ') & (getonandoff = ' + str(state['getonandoff']).lower() +  \
-                    ') & (pickup = ' + str(state['pickup']).lower() + ') & (closed = ' + str(state['closed']).lower() + \
-                    ') & (partially = ' + str(state['partially']).lower() + ') & (opened = ' + str(state['opened']).lower() + \
-                    ') & (obstacle = ' + str(state['obstacle']).lower() + ') & (idle = ' + str(state['idle']).lower() + \
-                    ') & (open = ' + str(state['open']).lower() + ') & (close = ' + str(state['close']).lower() + ');\n'
+            data += 'label \"dummy' + str(state['No']) + '\" = ' + '(force = ' + str(state['force']).lower() + ') & (arrived = ' + str(state['arrived']).lower() + \
+                ') & (moving = ' + str(state['moving']).lower() + \
+                ') & (closed = ' + str(state['closed']).lower() + ') & (opened = ' + str(state['opened']).lower() + \
+                ') & (stuck = ' + str(state['stuck']).lower() + \
+                ') & (obstacle = ' + str(state['obstacle']).lower() + ') & (emergency = ' + str(state['emergency']).lower() + \
+                ') & (close = ' + str(state['close']).lower() + ') & (open = ' + str(state['open']).lower() + ');\n'
     data += '\n'
     data += 'rewards "step"\n'
     data += '\t[] true : 1;\n'

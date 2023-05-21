@@ -1,0 +1,22 @@
+const int N;
+
+filter(avg, R{"step"}=? [ F "fail" ], "s0")
+
+filter(avg, P=? [ F<=N "fail" ], "s0")
+
+filter(avg, R{"step"}=? [ F power&!closed ], "s0")
+
+filter(avg, R{"step"}=? [ F !closed&on ], !closed)
+
+filter(avg, R{"step"}=? [ F !closed&on ], "s0")
+
+filter(avg, R{"step"}=? [ F partially&on ], "s0")
+
+filter(avg, P=? [ F<=N power&!closed ], "s0")
+
+filter(avg, P=? [ F<=N !closed&on ], !closed)
+
+filter(avg, P=? [ F<=N !closed&on ], "s0")
+
+filter(avg, P=? [ F<=N partially&on ], "s0")
+

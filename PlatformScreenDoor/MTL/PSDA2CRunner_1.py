@@ -7,8 +7,8 @@ from PlatformScreenDoor.MTL.PSDA2CEnv_1 import ActorCritic
 import json
 
 env = ActorCritic(render_mode='human')
-state_size = 18
-action_size = 3
+state_size = 128
+action_size = 2
 
 class critic(tf.keras.Model):
     def __init__(self):
@@ -27,7 +27,7 @@ class critic(tf.keras.Model):
 class actor(tf.keras.Model):
     def __init__(self):
         super().__init__()
-        self.d1 = tf.keras.layers.Dense(state_size, input_shape=(3,), activation='relu')
+        self.d1 = tf.keras.layers.Dense(state_size, input_shape=(7,), activation='relu')
         # self.d2 = tf.keras.layers.Dense(1536, activation='relu')
         self.a = tf.keras.layers.Dense(action_size, activation='softmax')
         self.model = tf.keras.models.Sequential([
@@ -46,8 +46,8 @@ class actor(tf.keras.Model):
 class agent():
     def __init__(self, gamma=0.99):
         self.gamma = gamma
-        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.03)
-        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.03)
+        self.a_opt = tf.keras.optimizers.RMSprop(learning_rate=0.01)
+        self.c_opt = tf.keras.optimizers.RMSprop(learning_rate=0.01)
         self.actor = actor()
         self.critic = critic()
 
@@ -130,7 +130,7 @@ def preprocess1(states, actions, rewards, gamma):
 f = open('PSDA2C_1_MTL_traces.json', 'w')
 tf.random.set_seed(336699)
 agentoo7 = agent()
-steps = 1000
+steps = 200
 ep_reward = []
 total_avgr = []
 for s in range(steps):
@@ -155,6 +155,16 @@ for s in range(steps):
 
         computed = env.take_env()
         if not computed:
+            if total_reward > 0:
+                ep_reward.append(total_reward)
+                avg_reward = np.mean(ep_reward[:])
+                total_avgr.append(avg_reward)
+                print("total reward after {} steps is {} and avg reward is {}".format(s, total_reward, avg_reward))
+                states, actions, discnt_rewards = preprocess1(states, actions, rewards, 1)
+                al, cl = agentoo7.learn(states, actions, discnt_rewards)
+                print(f"al{al}")
+                print(f"cl{cl}")
+                f.write(json.dumps(env.traces) + '\n')
             break
 
         cnt += 1
